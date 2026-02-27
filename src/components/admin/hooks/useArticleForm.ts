@@ -1,0 +1,232 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { Editor } from "@tiptap/react";
+import type { Lang } from "@/types";
+
+function toSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/ş/g, "s").replace(/ç/g, "c").replace(/ğ/g, "g")
+    .replace(/ı/g, "i").replace(/ö/g, "o").replace(/ü/g, "u")
+    .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+}
+
+export function useArticleForm(articleId: string | undefined, editor: Editor | null) {
+  const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [category, setCategory] = useState("other");
+  const [language, setLanguage] = useState<Lang>("tr");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Track the effective article ID — undefined for new, set after first POST
+  const createdArticleIdRef = useRef<string | undefined>(articleId);
+
+  useEffect(() => {
+    if (articleId) createdArticleIdRef.current = articleId;
+  }, [articleId]);
+
+  // Per-language content cache
+  const translationCache = useRef<
+    Record<Lang, { title: string; content: string; meta_description: string | null }>
+  >({
+    tr: { title: "", content: "", meta_description: null },
+    en: { title: "", content: "", meta_description: null },
+  });
+
+  const [metaDescriptions, setMetaDescriptions] = useState<Record<Lang, string | null>>({
+    tr: null,
+    en: null,
+  });
+
+  const getMetaDescription = useCallback(
+    (lang: Lang) => metaDescriptions[lang],
+    [metaDescriptions]
+  );
+
+  const setMetaDescription = useCallback((value: string | null, lang: Lang) => {
+    setMetaDescriptions((prev) => ({ ...prev, [lang]: value }));
+    translationCache.current[lang].meta_description = value;
+  }, []);
+
+  // Dirty tracking
+  useEffect(() => { setIsDirty(true); }, [title]);
+  useEffect(() => {
+    if (!editor) return;
+    const handler = () => setIsDirty(true);
+    editor.on("update", handler);
+    return () => { editor.off("update", handler); };
+  }, [editor]);
+
+  // Auto-save every 30s
+  useEffect(() => {
+    if (!isDirty || !editor || !title.trim()) return;
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      const id = createdArticleIdRef.current;
+      try {
+        const endpoint = id ? `/api/v1/admin/articles/${id}` : "/api/v1/admin/articles";
+        const res = await fetch(endpoint, {
+          method: id ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title, slug: slug || toSlug(title), category, language,
+            content: editor.getHTML(), thumbnail: null, status: "draft",
+            meta_description: translationCache.current[language].meta_description,
+          }),
+        });
+        if (res.ok) {
+          if (!id) {
+            const data = await res.json().catch(() => null);
+            if (data?.article?.id) createdArticleIdRef.current = data.article.id;
+          }
+          setLastSavedAt(new Date());
+          setIsDirty(false);
+        }
+      } catch { /* silent auto-save failure */ }
+    }, 30_000);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [isDirty, editor, title, slug, category, language]);
+
+  // Load existing article
+  useEffect(() => {
+    if (!articleId || !editor) return;
+    async function loadArticle() {
+      try {
+        const res = await fetch(`/api/v1/admin/articles/${articleId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const article = data.article;
+        const translations: Array<{
+          language: string;
+          title: string;
+          content: string;
+          meta_description?: string | null;
+        }> = data.translations ?? [];
+
+        if (article.slug) setSlug(article.slug);
+        if (article.category) setCategory(article.category);
+
+        const newMeta: Record<Lang, string | null> = { tr: null, en: null };
+        for (const t of translations) {
+          const lang = t.language as Lang;
+          translationCache.current[lang] = {
+            title: t.title || "",
+            content: t.content || "",
+            meta_description: t.meta_description ?? null,
+          };
+          newMeta[lang] = t.meta_description ?? null;
+        }
+        setMetaDescriptions(newMeta);
+
+        const tr = translations.find((t) => t.language === "tr");
+        const active = tr || translations[0];
+        if (active) {
+          setLanguage(active.language as Lang);
+          setTitle(active.title || "");
+          if (active.content && editor) editor.commands.setContent(active.content);
+        }
+        setIsDirty(false);
+      } catch { /* silent */ }
+    }
+    loadArticle();
+  }, [articleId, editor]);
+
+  const switchLanguage = useCallback((targetLang: Lang) => {
+    if (targetLang === language || !editor) return;
+    translationCache.current[language] = {
+      title,
+      content: editor.getHTML(),
+      meta_description: translationCache.current[language].meta_description,
+    };
+    const cached = translationCache.current[targetLang];
+    setTitle(cached?.title || "");
+    editor.commands.setContent(cached?.content || "");
+    setLanguage(targetLang);
+    setMetaDescriptions((prev) => ({ ...prev, [targetLang]: cached?.meta_description ?? null }));
+  }, [language, title, editor]);
+
+  const autoSlug = useCallback((value: string) => {
+    setTitle(value);
+    if (!createdArticleIdRef.current) setSlug(toSlug(value));
+  }, []);
+
+  const handleSave = useCallback(async (
+    status: "draft" | "published",
+    thumbnail: string | null,
+    metaDesc?: string | null
+  ) => {
+    if (!editor) return;
+    const id = createdArticleIdRef.current;
+    const effectiveTitle = title.trim()
+      || translationCache.current[language === "en" ? "tr" : "en"].title.trim();
+    if (!id && !effectiveTitle) {
+      setSaveError("Kaydetmek için önce bir başlık girin.");
+      return;
+    }
+    const titleToSend = title.trim() || effectiveTitle;
+
+    setSaving(true);
+    setSaveError(null);
+    const finalMeta = metaDesc !== undefined
+      ? metaDesc
+      : translationCache.current[language].meta_description;
+    try {
+      const endpoint = id ? `/api/v1/admin/articles/${id}` : "/api/v1/admin/articles";
+      const res = await fetch(endpoint, {
+        method: id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: titleToSend,
+          slug: slug || toSlug(effectiveTitle),
+          category, language,
+          content: editor.getHTML(), thumbnail, status,
+          meta_description: finalMeta ?? null,
+        }),
+      });
+
+      if (res.ok) {
+        if (!id) {
+          const data = await res.json().catch(() => null);
+          if (data?.article?.id) {
+            createdArticleIdRef.current = data.article.id;
+          }
+        }
+        setSaved(true);
+        setLastSavedAt(new Date());
+        setIsDirty(false);
+        setTimeout(() => setSaved(false), 2500);
+      } else {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        const msg = err?.error ?? "Kaydetme hatası";
+        setSaveError(msg);
+        console.error("[handleSave] API error", res.status, err);
+      }
+    } catch (e) {
+      setSaveError("Bağlantı hatası");
+      console.error("[handleSave] fetch error:", e);
+    } finally {
+      setSaving(false);
+    }
+  }, [editor, title, slug, category, language]);
+
+  return {
+    title, setTitle,
+    slug, setSlug,
+    category, setCategory,
+    language,
+    saving, saved, saveError,
+    lastSavedAt, isDirty,
+    metaDescriptions, getMetaDescription, setMetaDescription,
+    autoSlug, switchLanguage, handleSave,
+  };
+}

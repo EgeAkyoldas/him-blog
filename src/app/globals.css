@@ -1,26 +1,421 @@
 @import "tailwindcss";
 
+/* ─── Editorial Design — Cream & Charcoal ────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand — warm neutrals */
+  --color-deep-navy: #1a1a1a;
+  --color-charcoal: #2d2d2d;
+  --color-soft-cream: #f5f3ef;
+  --color-pure-white: #ffffff;
+  --color-muted-slate: #c8c4bc;
+  --color-gold-accent: #8a8276;
+
+  /* Text */
+  --color-heading: #1a1a1a;
+  --color-body: #4a4640;
+  --color-secondary: #7a756c;
+  --color-muted: #a8a29e;
+
+  /* Surfaces */
+  --color-surface: #f9f7f3;
+  --color-surface-raised: #efece6;
+  --color-surface-overlay: rgba(26, 26, 26, 0.03);
+  --color-border: rgba(200, 196, 188, 0.5);
+
+  /* Brand accent (buttons, links) — warm charcoal */
+  --color-brand-primary: #2d2d2d;
+  --color-brand-primary-text: #ffffff;
+  --color-brand-surface: #f5f3ef;
+  --color-brand-border: rgba(45, 45, 45, 0.1);
+  --color-text-muted: var(--color-muted);
+  --color-text-on-dark: #f0ece4;
+
+  /* Fonts */
+  --font-heading: var(--font-geist-sans), "Inter", system-ui, sans-serif;
+  --font-body: var(--font-geist-sans), "Inter", system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-deep-navy: #f0ece4;
+    --color-charcoal: #e0ddd5;
+    --color-soft-cream: #0c0b0a;
+    --color-pure-white: #1a1917;
+    --color-muted-slate: #3d3a34;
+    --color-gold-accent: #b0a898;
+
+    --color-heading: #f0ece4;
+    --color-body: #c8c4bc;
+    --color-secondary: #9a968e;
+    --color-muted: #6a665e;
+
+    --color-surface: #0c0b0a;
+    --color-surface-raised: #222120;
+    --color-surface-overlay: rgba(255, 255, 255, 0.06);
+    --color-border: rgba(255, 255, 255, 0.12);
+
+    --color-brand-primary: #f0ece4;
+    --color-brand-primary-text: #0c0b0a;
+    --color-brand-surface: #1a1917;
+    --color-brand-border: rgba(240, 236, 228, 0.15);
+    --color-text-on-dark: #f0ece4;
   }
 }
 
+/* ─── Tailwind Theme ─────────────────────────────────────── */
+@theme inline {
+  --color-background: var(--color-surface);
+  --color-foreground: var(--color-body);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-deep-navy: var(--color-deep-navy);
+  --color-charcoal: var(--color-charcoal);
+  --color-soft-cream: var(--color-soft-cream);
+  --color-pure-white: var(--color-pure-white);
+  --color-muted-slate: var(--color-muted-slate);
+  --color-gold-accent: var(--color-gold-accent);
+
+  --color-heading: var(--color-heading);
+  --color-body: var(--color-body);
+  --color-secondary: var(--color-secondary);
+  --color-muted: var(--color-muted);
+
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-overlay: var(--color-surface-overlay);
+  --color-border: var(--color-border);
+}
+
+/* ─── Base ───────────────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-body);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Section Padding ────────────────────────────────────── */
+.section-pad {
+  padding: 3rem 1.5rem;
+}
+@media (min-width: 640px) {
+  .section-pad { padding: 4rem 2rem; }
+}
+@media (min-width: 1024px) {
+  .section-pad { padding: 5rem 3rem; }
+}
+
+/* ─── Card ───────────────────────────────────────────────── */
+.card-boutique {
+  background: var(--color-pure-white);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-boutique:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 16px rgba(26, 26, 26, 0.04);
+}
+@media (prefers-color-scheme: dark) {
+  .card-boutique:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ─── Micro Radius ───────────────────────────────────────── */
+.micro-radius { border-radius: 6px; }
+
+/* ─── Label ──────────────────────────────────────────────── */
+.label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ─── Input ──────────────────────────────────────────────── */
+.input-boutique {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 13px;
+  color: var(--color-body);
+  background: var(--color-pure-white);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-boutique:focus {
+  border-color: var(--color-heading);
+  box-shadow: 0 0 0 2px var(--color-surface-overlay);
+}
+.input-boutique::placeholder { color: var(--color-muted); }
+
+/* ─── Button — Primary ───────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1.125rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-brand-primary-text);
+  background: var(--color-brand-primary);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+}
+.btn-primary:hover { opacity: 0.85; }
+.btn-primary:active { transform: scale(0.97); }
+
+/* ─── Button — Secondary ─────────────────────────────────── */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1.125rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-body);
+  background: var(--color-pure-white);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.btn-secondary:hover {
+  border-color: var(--color-charcoal);
+  background: var(--color-surface-raised);
+}
+
+.panel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.625rem;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-brand-primary-text);
+  background: var(--color-brand-primary);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.panel-btn:hover { opacity: 0.85; }
+
+/* ─── TipTap Editor ──────────────────────────────────────── */
+.ProseMirror {
+  outline: none;
+  min-height: 480px;
+  padding: 0.5rem 0;
+  color: var(--color-body);
+  font-size: 16px;
+  line-height: 1.75;
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.ProseMirror p {
+  margin: 0 0 1em 0;
+  color: var(--color-body);
+  line-height: 1.75;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-muted);
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+.ProseMirror h1, .ProseMirror h2, .ProseMirror h3 {
+  color: var(--color-heading);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  margin: 1.5em 0 0.5em 0;
+  line-height: 1.3;
+}
+.ProseMirror h1 { font-size: 1.875em; }
+.ProseMirror h2 { font-size: 1.5em; }
+.ProseMirror h3 { font-size: 1.25em; }
+.ProseMirror a {
+  color: var(--color-heading);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.ProseMirror a:hover {
+  color: var(--color-charcoal);
+}
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0 0 1em 0;
+}
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0 0 1em 0;
+}
+.ProseMirror li {
+  color: var(--color-body);
+  margin: 0.25em 0;
+  line-height: 1.75;
+}
+.ProseMirror li p {
+  margin: 0;
+}
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1.25rem 0;
+}
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-charcoal);
+  outline-offset: 3px;
+}
+.ProseMirror blockquote {
+  border-left: 3px solid var(--color-charcoal);
+  padding-left: 1rem;
+  margin: 1em 0;
+  color: var(--color-secondary);
+  font-style: italic;
+}
+.ProseMirror pre {
+  background: var(--color-surface-raised);
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.875em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.ProseMirror code {
+  background: var(--color-surface-raised);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+}
+.ProseMirror strong { color: var(--color-heading); }
+.ProseMirror em { color: inherit; }
+
+/* Resizable image */
+.image-resize-container { position: relative; display: inline-block; }
+.image-resize-handle {
+  position: absolute;
+  width: 10px; height: 10px;
+  background: var(--color-charcoal);
+  border: 2px solid var(--color-pure-white);
+  border-radius: 3px;
+  cursor: nwse-resize;
+}
+.image-resize-handle.bottom-right { right: -5px; bottom: -5px; }
+
+/* ─── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-muted-slate); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-secondary); }
+
+/* ─── Selection ──────────────────────────────────────────── */
+::selection { background: rgba(45, 45, 45, 0.2); color: inherit; }
+.ProseMirror ::selection { background: rgba(45, 45, 45, 0.25); color: inherit; }
+
+@media (prefers-color-scheme: dark) {
+  ::selection { background: rgba(212, 208, 200, 0.3); color: inherit; }
+  .ProseMirror ::selection { background: rgba(212, 208, 200, 0.35); color: inherit; }
+}
+
+/* ─── Shared Article Content Formatting ───────────────────── */
+/* Applied to BOTH .ProseMirror (TipTap editor) and .article-content (previews) */
+.ProseMirror,
+.article-content {
+  /* Headings */
+  h1 { font-size: 28px; font-weight: 700; margin: 1.5rem 0 0.5rem; line-height: 1.3; }
+  h2 { font-size: 24px; font-weight: 700; margin: 1.5rem 0 0.5rem; line-height: 1.35; }
+  h3 { font-size: 20px; font-weight: 600; margin: 1.25rem 0 0.4rem; line-height: 1.4; }
+  h4 { font-size: 18px; font-weight: 600; margin: 1rem 0 0.3rem; line-height: 1.4; }
+
+  /* Paragraphs */
+  p { margin-bottom: 0.85rem; line-height: 1.8; }
+  p:last-child { margin-bottom: 0; }
+
+  /* Inline formatting */
+  em, i { font-style: italic; }
+  strong, b { font-weight: 700; }
+  u { text-decoration: underline; }
+  s { text-decoration: line-through; }
+
+  /* Lists */
+  ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.5rem 0; }
+  ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
+  li { margin: 0.2rem 0; }
+  li p { margin-bottom: 0.25rem; }
+
+  /* Blockquote */
+  blockquote {
+    border-left: 3px solid var(--color-muted-slate);
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    font-style: italic;
+    color: var(--color-secondary);
+  }
+
+  /* Code */
+  code { background: var(--color-surface-overlay); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+  pre { background: var(--color-surface-raised); padding: 1rem; border-radius: 6px; overflow-x: auto; margin: 0.75rem 0; }
+  pre code { background: none; padding: 0; }
+
+  /* Horizontal rule */
+  hr { border: none; border-top: 1px solid var(--color-border); margin: 1.5rem 0; }
+
+  /* Images — proportional sizing */
+  img {
+    max-width: 100%;
+    max-height: 400px;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    margin: 1rem auto;
+    display: block;
+  }
+  img[style*="float"] {
+    display: inline;
+    margin: 0.5rem;
+  }
+
+  /* Links */
+  a { color: var(--color-deep-navy); text-decoration: underline; }
+  a:hover { opacity: 0.8; }
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  .ProseMirror,
+  .article-content {
+    h1, h2, h3, h4 { color: var(--color-heading); }
+    a { color: var(--color-gold-accent); }
+    blockquote { border-left-color: var(--color-gold-accent); }
+  }
 }
