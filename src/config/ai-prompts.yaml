@@ -114,6 +114,19 @@ actions:
     - Makale 800-1200 kelime arasında olsun.
     - Paragraflar arasında doğal geçişler yap.
 
+    KAYNAK VE REFERANS:
+    - Konuyu araştır, güvenilir kaynaklara dayalı bilgiler ver.
+    - Metin içinde önemli bilgileri kaynak numarası ile işaretle: <sup>[1]</sup>, <sup>[2]</sup>
+    - Makalenin en sonuna şu formatta bir kaynak listesi ekle:
+      [SOURCES]
+      1. Kaynak başlığı — URL veya kitap/makale adı
+      2. Kaynak başlığı — URL veya kitap/makale adı
+      [/SOURCES]
+    - En az 2-3, en fazla 6 kaynak kullan.
+
+    İÇ LİNKLER:
+    {existing_articles}
+
     KATEGORİ SEÇİMİ:
     - Makalenin ilk satırına aşağıdaki formatla bir kategori etiketi koy:
     - [CATEGORY: theory] — müzik teorisi, armoni, nota, tonalite
@@ -122,7 +135,7 @@ actions:
     - [CATEGORY: sight_reading] — deşifre, nota okuma
     - [CATEGORY: performance] — sahne, konser, performans
     - [CATEGORY: exam_prep] — sınav, ABRSM, hazırlık
-    - [CATEGORY: other] — yukarıdakilerden hiçbiri
+    - Eğer yukarıdakilerden hiçbiri uymuyorsa kendi kategori adını yaz: [CATEGORY: kategori_adi]
 
     GÖRSEL YERLEŞİMİ:
     - Makalenin uygun yerlerine görsel placeholder koy.
@@ -131,8 +144,6 @@ actions:
     - İlk görseli landscape yap. Diğerlerini karıştır (square, portrait, landscape).
     - Toplam 3-4 görsel placeholder kullan.
     - Görsel açıklamalarını İngilizce ve detaylı yaz.
-    - Örnek: [IMAGE: A close-up of hands playing piano keys with warm studio lighting | SIZE: square]
-    - Örnek: [IMAGE: A music teacher explaining chord progressions on a whiteboard | SIZE: portrait]
 
     Dil: {language}
 

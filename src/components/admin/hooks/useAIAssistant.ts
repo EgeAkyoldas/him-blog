@@ -197,6 +197,7 @@ export function useAIAssistant(editor: Editor | null) {
   const [autoBlogLoading, setAutoBlogLoading] = useState(false);
   const [autoBlogProgress, setAutoBlogProgress] = useState("");
   const [autoBlogIncludeImages, setAutoBlogIncludeImages] = useState(true);
+  const [autoTags, setAutoTags] = useState<string[]>([]);
 
   // Fallback category detection from topic keywords
   const detectCategory = (topic: string): string => {
@@ -230,14 +231,38 @@ export function useAIAssistant(editor: Editor | null) {
     onCoverImage?: (url: string) => void,
     onSetTitle?: (title: string) => void,
     onSetCategory?: (cat: string) => void,
+    onSetSlug?: (slug: string) => void,
   ) => {
     if (!editor || !topic.trim()) return;
     setAutoBlogLoading(true);
-    setAutoBlogProgress("Makale metni oluşturuluyor...");
+    setAutoBlogProgress("Mevcut makaleler yükleniyor...");
     setAiOpen(true);
+    setAutoTags([]);
 
     try {
-      // 1. Generate text via AI
+      // 0. Fetch existing articles for internal linking
+      let existingArticles = "";
+      try {
+        const articlesRes = await fetch("/api/v1/admin/articles");
+        if (articlesRes.ok) {
+          const articlesData = await articlesRes.json();
+          const articles = articlesData.articles || [];
+          if (articles.length > 0) {
+            existingArticles = articles
+              .filter((a: { tr_title: string | null; slug: string }) => a.tr_title && a.slug)
+              .map((a: { tr_title: string; slug: string; category: string }) =>
+                `- "${a.tr_title}" → /blog/${a.slug} [${a.category}]`
+              )
+              .join("\n");
+            console.log(`[Auto Blog] Found ${articles.length} existing articles for internal linking`);
+          }
+        }
+      } catch (e) {
+        console.warn("[Auto Blog] Could not fetch existing articles:", e);
+      }
+
+      // 1. Generate text via AI (with Google Search grounding)
+      setAutoBlogProgress("Kaynak araştırılıyor ve makale oluşturuluyor...");
       const textRes = await fetch("/api/v1/admin/ai-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -245,6 +270,7 @@ export function useAIAssistant(editor: Editor | null) {
           action: "auto_blog",
           title: topic,
           language,
+          existingArticles: existingArticles || undefined,
         }),
       });
 
@@ -258,6 +284,7 @@ export function useAIAssistant(editor: Editor | null) {
 
       const textData = await textRes.json();
       let html: string = textData.result || "";
+      const groundingChunks: { url: string; title: string }[] = textData.groundingChunks || [];
 
       // 2. Extract [CATEGORY: value] from AI output
       const catMatch = html.match(/\[CATEGORY:\s*([^\]]+)\]/i);
@@ -267,10 +294,8 @@ export function useAIAssistant(editor: Editor | null) {
           onSetCategory(aiCategory);
           console.log(`[Auto Blog] AI-detected category: ${aiCategory}`);
         }
-        // Remove the tag from HTML
         html = html.replace(/\[CATEGORY:\s*[^\]]+\]/gi, "");
       } else {
-        // Keyword fallback
         if (onSetCategory) onSetCategory(detectCategory(topic));
       }
 
@@ -281,11 +306,82 @@ export function useAIAssistant(editor: Editor | null) {
         : topic.trim();
 
       if (onSetTitle) {
-        setAutoBlogProgress("Başlık ve slug ayarlanıyor...");
+        setAutoBlogProgress("Başlık ayarlanıyor...");
         onSetTitle(articleTitle);
       }
 
-      // 4. Find image placeholders — new format: [IMAGE: desc | SIZE: landscape]
+      // 3b. Generate SEO-optimized slug via AI
+      if (onSetSlug) {
+        setAutoBlogProgress("SEO slug üretiliyor...");
+        try {
+          const slugRes = await fetch("/api/v1/admin/ai-assist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "custom",
+              content: articleTitle,
+              title: articleTitle,
+              language,
+              prompt: `Bu makale başlığı için SEO-uyumlu bir URL slug üret. Kurallar: Sadece İngilizce küçük harf ve tire (-) kullan. Türkçe karakter kullanma. Kısa ve keyword-rich olsun (3-6 kelime). Sadece slug'ı döndür, başka bir şey yazma. Örnek: "music-theory-basics" veya "guitar-chord-progressions"`,
+            }),
+          });
+          if (slugRes.ok) {
+            const slugData = await slugRes.json();
+            const cleanSlug = (slugData.result as string)
+              .replace(/<[^>]*>/g, "").trim().toLowerCase()
+              .replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+            if (cleanSlug.length > 3) {
+              onSetSlug(cleanSlug);
+              console.log(`[Auto Blog] SEO slug: ${cleanSlug}`);
+            }
+          }
+        } catch (slugErr) {
+          console.warn("[Auto Blog] Slug generation failed:", slugErr);
+        }
+      }
+
+      // 4. Parse [SOURCES]...[/SOURCES] block from AI output
+      const sourcesMatch = html.match(/\[SOURCES\]([\s\S]*?)\[\/SOURCES\]/i);
+      let sourcesHtml = "";
+      if (sourcesMatch) {
+        const sourceLines = sourcesMatch[1].trim().split("\n").filter(l => l.trim());
+        const sourceItems = sourceLines.map(line => {
+          const clean = line.replace(/^\d+\.\s*/, "").trim();
+          // Try to extract URL from line
+          const urlMatch = clean.match(/(https?:\/\/[^\s]+)/);
+          if (urlMatch) {
+            const title = clean.replace(urlMatch[0], "").replace(/[—–-]\s*$/, "").replace(/[—–-]\s*/, "").trim() || urlMatch[0];
+            return `<li><a href="${urlMatch[0]}" target="_blank" rel="noopener noreferrer">${title}</a></li>`;
+          }
+          return `<li>${clean}</li>`;
+        });
+        sourcesHtml = sourceItems.join("\n");
+        // Remove the tag from content
+        html = html.replace(/\[SOURCES\][\s\S]*?\[\/SOURCES\]/i, "");
+      }
+
+      // Merge with Gemini grounding chunks
+      if (groundingChunks.length > 0) {
+        const groundingItems = groundingChunks.map(c =>
+          `<li><a href="${c.url}" target="_blank" rel="noopener noreferrer">${c.title || c.url}</a></li>`
+        );
+        sourcesHtml += "\n" + groundingItems.join("\n");
+      }
+
+      // Build styled references footer
+      if (sourcesHtml.trim()) {
+        const referencesFooter = `
+          <footer class="article-references" style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--color-border)">
+            <h3 style="font-size:16px;font-weight:600;margin-bottom:0.75rem">📚 Kaynaklar</h3>
+            <ol style="font-size:14px;line-height:1.8;padding-left:1.2rem;color:var(--color-secondary)">
+              ${sourcesHtml}
+            </ol>
+          </footer>`;
+        html += referencesFooter;
+        console.log(`[Auto Blog] Sources added to references section`);
+      }
+
+      // 5. Find image placeholders — format: [IMAGE: desc | SIZE: landscape]
       const placeholderRegex = /\[IMAGE:\s*([^\]|]+?)(?:\s*\|\s*SIZE:\s*(landscape|square|portrait))?\s*\]/gi;
       const placeholders: { full: string; desc: string; size: string }[] = [];
       const defaultSizes = ["landscape", "square", "portrait", "landscape"];
@@ -298,7 +394,7 @@ export function useAIAssistant(editor: Editor | null) {
       console.log(`[Auto Blog] Found ${placeholders.length} image placeholders:`,
         placeholders.map(p => `${p.size}: ${p.desc.slice(0, 40)}`));
 
-      // 5. Generate images if enabled
+      // 6. Generate images if enabled
       if (autoBlogIncludeImages && placeholders.length > 0) {
         let firstImageUrl: string | null = null;
 
@@ -353,14 +449,14 @@ export function useAIAssistant(editor: Editor | null) {
         html = html.replace(/\[IMAGE:[^\]]*\]/gi, "");
       }
 
-      // 6. Add clearfix after floated images to prevent layout issues
+      // 7. Add clearfix after floated images to prevent layout issues
       html = html.replace(/<\/article>|$/, '<div style="clear:both"></div>');
 
-      // 7. Apply to editor
+      // 8. Apply to editor
       setAutoBlogProgress("Editöre uygulanıyor...");
       editor.commands.setContent(html);
 
-      // 8. Auto-generate SEO meta description
+      // 9. Auto-generate SEO meta description
       setAutoBlogProgress("SEO meta açıklaması üretiliyor...");
       try {
         const metaRes = await fetch("/api/v1/admin/ai-assist", {
@@ -382,6 +478,31 @@ export function useAIAssistant(editor: Editor | null) {
         }
       } catch (metaErr) {
         console.warn("[Auto Blog] SEO meta generation failed:", metaErr);
+      }
+
+      // 10. Auto-extract keywords/tags
+      setAutoBlogProgress("Anahtar kelimeler çıkarılıyor...");
+      try {
+        const tagRes = await fetch("/api/v1/admin/ai-assist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "custom",
+            content: html,
+            title: articleTitle,
+            language,
+            prompt: "Bu müzik eğitimi makalesinden 5-8 adet SEO anahtar kelime/tag çıkar. Virgülle ayırarak sadece kelimeleri döndür, başka bir şey yazma. Örnek: müzik teorisi, akor, piyano, armoni",
+          }),
+        });
+        if (tagRes.ok) {
+          const tagData = await tagRes.json();
+          const raw = (tagData.result as string).replace(/<[^>]*>/g, "").trim();
+          const tags = raw.split(",").map(t => t.trim()).filter(t => t.length > 0 && t.length < 40);
+          setAutoTags(tags);
+          console.log(`[Auto Blog] Tags extracted:`, tags);
+        }
+      } catch (tagErr) {
+        console.warn("[Auto Blog] Tag extraction failed:", tagErr);
       }
 
       setAutoBlogProgress("");
@@ -407,5 +528,6 @@ export function useAIAssistant(editor: Editor | null) {
     // Auto Blog
     autoBlogLoading, autoBlogProgress, autoBlogIncludeImages,
     setAutoBlogIncludeImages, generateAutoBlog,
+    autoTags, setAutoTags,
   };
 }

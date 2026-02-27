@@ -46,6 +46,9 @@ interface AIPanelProps {
   autoBlogIncludeImages: boolean;
   onAutoBlogIncludeImagesChange: (v: boolean) => void;
   onGenerateAutoBlog: (topic: string) => void;
+  // Tags
+  autoTags: string[];
+  onRemoveTag: (tag: string) => void;
 }
 
 const SIZE_OPTIONS = [
@@ -98,6 +101,7 @@ function PanelContent({
   seoMeta, seoLoading, onGenerateSEO, onClearSEO, onSetSeoMeta, onApplySEOMeta,
   autoBlogLoading, autoBlogProgress, autoBlogIncludeImages,
   onAutoBlogIncludeImagesChange, onGenerateAutoBlog,
+  autoTags, onRemoveTag,
   onClose,
 }: Omit<AIPanelProps, "open"> & { onClose: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -380,6 +384,27 @@ function PanelContent({
           </button>
         )}
       </div>
+
+      {/* ─── ANAHTAR KELİMELER ─── */}
+      {autoTags.length > 0 && (
+        <div className="p-3" style={{ borderBottom: "1px solid var(--color-brand-border)" }}>
+          <SectionLabel icon={Search} label="Anahtar Kelimeler" />
+          <div className="flex flex-wrap gap-1.5">
+            {autoTags.map((tag, i) => (
+              <span key={i}
+                className="inline-flex items-center gap-1 px-2 py-0.5 micro-radius text-[11px] font-medium cursor-default"
+                style={{ backgroundColor: "var(--color-surface-overlay)", color: "var(--color-secondary)", border: "1px solid var(--color-border)" }}
+              >
+                {tag}
+                <button onClick={() => onRemoveTag(tag)}
+                  className="text-muted hover:text-secondary ml-0.5">
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ─── SERBEST TALİMAT ─── */}
       <div className="p-3" style={{ borderBottom: "1px solid var(--color-brand-border)" }}>

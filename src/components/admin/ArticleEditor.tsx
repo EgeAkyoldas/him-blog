@@ -490,8 +490,11 @@ export default function ArticleEditor({ articleId }: Props) {
                 (url) => images.setThumbnail(url, form.language),
                 form.autoSlug,
                 form.setCategory,
+                form.setSlug,
               )
             }
+            autoTags={ai.autoTags}
+            onRemoveTag={(tag) => ai.setAutoTags(prev => prev.filter(t => t !== tag))}
           />
         </div>
 

@@ -13,6 +13,7 @@ interface AIRequest {
   language?: string;
   prompt?: string;
   seoIssues?: string;
+  existingArticles?: string;
 }
 
 function buildPrompt(data: AIRequest): string {
@@ -29,6 +30,9 @@ function buildPrompt(data: AIRequest): string {
     prompt: data.prompt ?? "",
     seo_issues: data.seoIssues ?? "",
     dimension: "",
+    existing_articles: data.existingArticles
+      ? `Mevcut blog makaleleri:\n${data.existingArticles}\nBu makalelerden alakalı olanları metin içinde doğal şekilde <a href="/blog/SLUG">başlık</a> formatıyla linkle. Zorla linkleme, sadece konuyla gerçekten ilgili olanları kullan.`
+      : "Henüz mevcut makale yok, iç link ekleme.",
   };
 
   const actionKey = data.action === "seo-optimize" ? "seo_optimize" : data.action;
@@ -55,16 +59,27 @@ export async function POST(request: NextRequest) {
     const systemInstruction = config.system_instruction;
     const prompt = buildPrompt(body);
 
+    // Enable Google Search grounding for auto_blog to get real sources
+    const isAutoBlog = body.action === "auto_blog";
+
+    // Build request body
+    const geminiBody: Record<string, unknown> = {
+      system_instruction: { parts: [{ text: systemInstruction }] },
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, topP: 0.9, maxOutputTokens: 8192 },
+    };
+
+    // Add google search tool for auto_blog
+    if (isAutoBlog) {
+      geminiBody.tools = [{ googleSearch: {} }];
+    }
+
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemInstruction }] },
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, topP: 0.9, maxOutputTokens: 8192 },
-        }),
+        body: JSON.stringify(geminiBody),
       }
     );
 
@@ -76,7 +91,20 @@ export async function POST(request: NextRequest) {
 
     const data = await res.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    return NextResponse.json({ result: text });
+
+    // Extract grounding metadata if available (for auto_blog w/ search)
+    const groundingMeta = data.candidates?.[0]?.groundingMetadata;
+    const groundingChunks = groundingMeta?.groundingChunks?.map(
+      (chunk: { web?: { uri?: string; title?: string } }) => ({
+        url: chunk.web?.uri ?? "",
+        title: chunk.web?.title ?? "",
+      })
+    )?.filter((c: { url: string }) => c.url) ?? [];
+
+    return NextResponse.json({
+      result: text,
+      ...(groundingChunks.length > 0 && { groundingChunks }),
+    });
   } catch (error) {
     console.error("AI assist error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
