@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadAIPrompts, interpolate } from "@/lib/ai-prompts";
+import { loadAIPrompts, getPersona, interpolate } from "@/lib/ai-prompts";
 
 /**
  * POST /api/v1/admin/ai-assist — AI text generation using Google Gemini.
- * Prompts are loaded from src/config/ai-prompts.yaml.
+ * Supports multi-persona system: persona-specific system instructions and prompt injection.
  */
 
 interface AIRequest {
@@ -13,9 +13,43 @@ interface AIRequest {
   language?: string;
   prompt?: string;
   seoIssues?: string;
+  persona?: string;
 }
 
-function buildPrompt(data: AIRequest): string {
+// Dynamic temperature: analytical tasks low, creative tasks high
+const TEMPERATURE_MAP: Record<string, number> = {
+  summarize: 0.2,
+  translate: 0.3,
+  seo_optimize: 0.25,
+  improve: 0.5,
+  blog_ready: 0.6,
+  expand: 0.7,
+  bilingual: 0.7,
+  custom: 0.7,
+  generate: 0.85,
+  auto_blog: 0.85,
+};
+
+function buildSystemInstruction(persona: ReturnType<typeof getPersona>): string {
+  const config = loadAIPrompts();
+  const base = config.system_instruction;
+  const globalNeg = config.global_rules?.negative_constraints || "";
+  const globalStyle = config.global_rules?.writing_style_rules || "";
+
+  // Build persona-augmented system instruction
+  return [
+    base,
+    `\n--- ACTIVE PERSONA: ${persona.name} ---`,
+    `TONE: ${persona.tone}`,
+    persona.instruction,
+    persona.writing_style_rules ? `WRITING STYLE:\n${persona.writing_style_rules}` : "",
+    `GLOBAL WRITING RULES:\n${globalStyle}`,
+    `GLOBAL NEGATIVE CONSTRAINTS:\n${globalNeg}`,
+    persona.negative_constraints ? `PERSONA NEGATIVE CONSTRAINTS:\n${persona.negative_constraints}` : "",
+  ].filter(Boolean).join("\n\n");
+}
+
+function buildPrompt(data: AIRequest, persona: ReturnType<typeof getPersona>): string {
   const config = loadAIPrompts();
   const lang = data.language === "en" ? "en" : "tr";
   const langName = lang === "en" ? "English" : "Türkçe";
@@ -29,6 +63,11 @@ function buildPrompt(data: AIRequest): string {
     prompt: data.prompt ?? "",
     seo_issues: data.seoIssues ?? "",
     dimension: "",
+    // Persona variables for auto_blog and blog_ready
+    persona_name: persona.name,
+    persona_instruction: persona.instruction || "",
+    persona_negative_constraints: persona.negative_constraints || "",
+    persona_writing_style: persona.writing_style_rules || "",
   };
 
   const actionKey = data.action === "seo-optimize" ? "seo_optimize" : data.action;
@@ -51,9 +90,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
     }
 
-    const config = loadAIPrompts();
-    const systemInstruction = config.system_instruction;
-    const prompt = buildPrompt(body);
+    // Resolve persona (falls back to philosopher_editor)
+    const persona = getPersona(body.persona);
+    const systemInstruction = buildSystemInstruction(persona);
+    const prompt = buildPrompt(body, persona);
+    const actionKey = body.action === "seo-optimize" ? "seo_optimize" : body.action;
 
     // Enable Google Search grounding for auto_blog and blog_ready to get real sources
     const useSearch = body.action === "auto_blog" || body.action === "blog_ready";
@@ -62,7 +103,11 @@ export async function POST(request: NextRequest) {
     const geminiBody: Record<string, unknown> = {
       system_instruction: { parts: [{ text: systemInstruction }] },
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, topP: 0.9, maxOutputTokens: 8192 },
+      generationConfig: {
+        temperature: TEMPERATURE_MAP[actionKey] ?? 0.7,
+        topP: 0.9,
+        maxOutputTokens: 8192,
+      },
     };
 
     // Add google search tool for auto_blog

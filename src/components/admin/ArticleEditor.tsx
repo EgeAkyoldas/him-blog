@@ -516,6 +516,8 @@ export default function ArticleEditor({ articleId }: Props) {
                 (text) => form.setMetaDescription(text, form.language),
               )
             }
+            selectedPersona={ai.selectedPersona}
+            onPersonaChange={ai.setSelectedPersona}
           />
         </div>
 

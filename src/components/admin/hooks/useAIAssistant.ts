@@ -13,6 +13,9 @@ export function useAIAssistant(editor: Editor | null) {
   const [bilingualResult, setBilingualResult] = useState<{ tr: string; en: string } | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
 
+  // Persona
+  const [selectedPersona, setSelectedPersona] = useState("philosopher_editor");
+
   // Image AI
   const [aiImageLoading, setAiImageLoading] = useState(false);
   const [imagePromptText, setImagePromptText] = useState("");
@@ -39,6 +42,7 @@ export function useAIAssistant(editor: Editor | null) {
           body: JSON.stringify({
             action, content: editor.getHTML(), title, language,
             prompt: action === "custom" ? customPrompt : undefined,
+            persona: selectedPersona,
           }),
         });
         if (res.ok) {
@@ -57,7 +61,7 @@ export function useAIAssistant(editor: Editor | null) {
       } catch { setAiResult("⚠️ Bağlantı hatası."); }
       finally { setAiLoading(false); }
     },
-    [editor, customPrompt]
+    [editor, customPrompt, selectedPersona]
   );
 
   const applyAIResult = useCallback((content?: string) => {
@@ -197,6 +201,26 @@ export function useAIAssistant(editor: Editor | null) {
     }
   }, [editor]);
 
+  // ── XML Hybrid Parser (V3) ──────────────────────────────────────────
+  // Tries XML tag first, falls back to old regex for backward compatibility
+  const extractXMLTag = (html: string, tag: string): string => {
+    const xmlMatch = html.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i'));
+    return xmlMatch ? xmlMatch[1].trim() : '';
+  };
+
+  // Strip all XML wrapper tags from content, leaving only inner HTML
+  const stripXMLWrappers = (html: string): string => {
+    let result = html;
+    // Remove <meta_data>...</meta_data> block entirely
+    result = result.replace(/<meta_data>[\s\S]*?<\/meta_data>/gi, '');
+    // Remove <ref_links>...</ref_links> block entirely  
+    result = result.replace(/<ref_links>[\s\S]*?<\/ref_links>/gi, '');
+    // Extract content from <article_body> if present
+    const bodyMatch = result.match(/<article_body>([\s\S]*?)<\/article_body>/i);
+    if (bodyMatch) result = bodyMatch[1].trim();
+    return result;
+  };
+
   // ── Auto Blog ──────────────────────────────────────────────────────
   const [autoBlogLoading, setAutoBlogLoading] = useState(false);
   const [autoBlogProgress, setAutoBlogProgress] = useState("");
@@ -253,6 +277,7 @@ export function useAIAssistant(editor: Editor | null) {
           action: "auto_blog",
           title: topic,
           language,
+          persona: selectedPersona,
         }),
       });
 
@@ -268,18 +293,25 @@ export function useAIAssistant(editor: Editor | null) {
       let html: string = textData.result || "";
       const groundingChunks: { url: string; title: string }[] = textData.groundingChunks || [];
 
-      // 2. Extract [CATEGORY: value] from AI output
+      // 2. Extract metadata from XML tags (V3) with regex fallback (V2)
+      const xmlCategory = extractXMLTag(html, 'category');
+      const xmlSlug = extractXMLTag(html, 'slug');
+      const xmlMeta = extractXMLTag(html, 'meta_description');
+      const xmlKeywords = extractXMLTag(html, 'keywords');
+
+      // Category: XML first, then old [CATEGORY:] regex, then keyword detection
       const catMatch = html.match(/\[CATEGORY:\s*([^\]]+)\]/i);
-      if (catMatch) {
-        const aiCategory = catMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
-        if (onSetCategory) {
-          onSetCategory(aiCategory);
-          console.log(`[Auto Blog] AI-detected category: ${aiCategory}`);
-        }
-        html = html.replace(/\[CATEGORY:\s*[^\]]+\]/gi, "");
-      } else {
-        if (onSetCategory) onSetCategory(detectCategory(topic));
+      const aiCategory = xmlCategory
+        || (catMatch ? catMatch[1].trim().toLowerCase().replace(/\s+/g, "_") : "")
+        || detectCategory(topic);
+      if (onSetCategory) {
+        onSetCategory(aiCategory);
+        console.log(`[Auto Blog] Category: ${aiCategory} (source: ${xmlCategory ? 'XML' : catMatch ? 'regex' : 'detect'})`);
       }
+
+      // Strip XML wrapper tags + old [CATEGORY:] from HTML, leaving clean article content
+      html = stripXMLWrappers(html);
+      html = html.replace(/\[CATEGORY:\s*[^\]]+\]/gi, "");
 
       // 3. Extract title from first H1/H2 or use topic
       const titleMatch = html.match(/<h[12][^>]*>(.*?)<\/h[12]>/i);
@@ -292,33 +324,24 @@ export function useAIAssistant(editor: Editor | null) {
         onSetTitle(articleTitle);
       }
 
-      // 3b. Generate SEO-optimized slug via AI
+      // 3b. Slug: XML first, then generate locally (no extra AI call!)
       if (onSetSlug) {
-        setAutoBlogProgress("SEO slug üretiliyor...");
-        try {
-          const slugRes = await fetch("/api/v1/admin/ai-assist", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "custom",
-              content: articleTitle,
-              title: articleTitle,
-              language,
-              prompt: `Bu makale başlığı için SEO-uyumlu bir URL slug üret. Kurallar: Sadece İngilizce küçük harf ve tire (-) kullan. Türkçe karakter kullanma. Kısa ve keyword-rich olsun (3-6 kelime). Sadece slug'ı döndür, başka bir şey yazma. Örnek: "music-theory-basics" veya "guitar-chord-progressions"`,
-            }),
-          });
-          if (slugRes.ok) {
-            const slugData = await slugRes.json();
-            const cleanSlug = (slugData.result as string)
-              .replace(/<[^>]*>/g, "").trim().toLowerCase()
-              .replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
-            if (cleanSlug.length > 3) {
-              onSetSlug(cleanSlug);
-              console.log(`[Auto Blog] SEO slug: ${cleanSlug}`);
-            }
+        if (xmlSlug && xmlSlug.length > 3) {
+          const cleanSlug = xmlSlug.toLowerCase()
+            .replace(/<[^>]*>/g, "").trim()
+            .replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+          if (cleanSlug.length > 3) {
+            onSetSlug(cleanSlug);
+            console.log(`[Auto Blog] Slug from XML: ${cleanSlug}`);
           }
-        } catch (slugErr) {
-          console.warn("[Auto Blog] Slug generation failed:", slugErr);
+        } else {
+          // Fallback: generate slug from title locally
+          const fallbackSlug = articleTitle.toLowerCase()
+            .replace(/[çÇ]/g, "c").replace(/[ğĞ]/g, "g").replace(/[ıİ]/g, "i")
+            .replace(/[öÖ]/g, "o").replace(/[üÜ]/g, "u").replace(/[şŞ]/g, "s")
+            .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-")
+            .replace(/^-|-$/g, "").slice(0, 60);
+          if (fallbackSlug.length > 3) onSetSlug(fallbackSlug);
         }
       }
 
@@ -473,54 +496,59 @@ export function useAIAssistant(editor: Editor | null) {
       setAutoBlogProgress("Editöre uygulanıyor...");
       editor.commands.setContent(html);
 
-      // 9. Auto-generate SEO meta description
-      setAutoBlogProgress("SEO meta açıklaması üretiliyor...");
-      try {
-        const metaRes = await fetch("/api/v1/admin/ai-assist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "custom",
-            content: html,
-            title: articleTitle,
-            language,
-            prompt: "Bu makale için Google SEO meta açıklaması yaz. Maksimum 155 karakter, sade, tıklanabilir ve konuyu özetleyen. Sadece açıklamayı döndür, başka bir şey yazma.",
-          }),
-        });
-        if (metaRes.ok) {
-          const metaData = await metaRes.json();
-          const cleanMeta = (metaData.result as string).replace(/<[^>]*>/g, "").trim().slice(0, 160);
-          setSeoMeta(cleanMeta);
-          if (onSetMetaDescription) onSetMetaDescription(cleanMeta);
-          console.log(`[Auto Blog] SEO meta generated: "${cleanMeta}"`);
+      // 9. SEO meta: XML first, fallback to AI call
+      if (xmlMeta && xmlMeta.length > 10) {
+        const cleanMeta = xmlMeta.replace(/<[^>]*>/g, "").trim().slice(0, 160);
+        setSeoMeta(cleanMeta);
+        if (onSetMetaDescription) onSetMetaDescription(cleanMeta);
+        console.log(`[Auto Blog] SEO meta from XML: "${cleanMeta}"`);
+      } else {
+        setAutoBlogProgress("SEO meta açıklaması üretiliyor...");
+        try {
+          const metaRes = await fetch("/api/v1/admin/ai-assist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "custom", content: html, title: articleTitle, language,
+              prompt: "Bu makale için Google SEO meta açıklaması yaz. Maksimum 155 karakter. Sadece açıklamayı döndür.",
+            }),
+          });
+          if (metaRes.ok) {
+            const metaData = await metaRes.json();
+            const cleanMeta = (metaData.result as string).replace(/<[^>]*>/g, "").trim().slice(0, 160);
+            setSeoMeta(cleanMeta);
+            if (onSetMetaDescription) onSetMetaDescription(cleanMeta);
+          }
+        } catch (metaErr) {
+          console.warn("[Auto Blog] SEO meta generation failed:", metaErr);
         }
-      } catch (metaErr) {
-        console.warn("[Auto Blog] SEO meta generation failed:", metaErr);
       }
 
-      // 10. Auto-extract keywords/tags
-      setAutoBlogProgress("Anahtar kelimeler çıkarılıyor...");
-      try {
-        const tagRes = await fetch("/api/v1/admin/ai-assist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "custom",
-            content: html,
-            title: articleTitle,
-            language,
-            prompt: "Bu müzik eğitimi makalesinden 5-8 adet SEO anahtar kelime/tag çıkar. Virgülle ayırarak sadece kelimeleri döndür, başka bir şey yazma. Örnek: müzik teorisi, akor, piyano, armoni",
-          }),
-        });
-        if (tagRes.ok) {
-          const tagData = await tagRes.json();
-          const raw = (tagData.result as string).replace(/<[^>]*>/g, "").trim();
-          const tags = raw.split(",").map(t => t.trim()).filter(t => t.length > 0 && t.length < 40);
-          setAutoTags(tags);
-          console.log(`[Auto Blog] Tags extracted:`, tags);
+      // 10. Keywords: XML first, fallback to AI call
+      if (xmlKeywords && xmlKeywords.length > 3) {
+        const tags = xmlKeywords.replace(/<[^>]*>/g, "").split(",").map(t => t.trim()).filter(t => t.length > 0 && t.length < 40);
+        setAutoTags(tags);
+        console.log(`[Auto Blog] Tags from XML:`, tags);
+      } else {
+        setAutoBlogProgress("Anahtar kelimeler çıkarılıyor...");
+        try {
+          const tagRes = await fetch("/api/v1/admin/ai-assist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "custom", content: html, title: articleTitle, language,
+              prompt: "Bu makale için 5-8 adet SEO anahtar kelime/tag çıkar. Virgülle ayırarak sadece kelimeleri döndür.",
+            }),
+          });
+          if (tagRes.ok) {
+            const tagData = await tagRes.json();
+            const raw = (tagData.result as string).replace(/<[^>]*>/g, "").trim();
+            const tags = raw.split(",").map(t => t.trim()).filter(t => t.length > 0 && t.length < 40);
+            setAutoTags(tags);
+          }
+        } catch (tagErr) {
+          console.warn("[Auto Blog] Tag extraction failed:", tagErr);
         }
-      } catch (tagErr) {
-        console.warn("[Auto Blog] Tag extraction failed:", tagErr);
       }
 
       setAutoBlogProgress("");
@@ -530,7 +558,7 @@ export function useAIAssistant(editor: Editor | null) {
     } finally {
       setAutoBlogLoading(false);
     }
-  }, [editor, autoBlogIncludeImages]);
+  }, [editor, autoBlogIncludeImages, selectedPersona]);
 
   // ─── Blog Ready: format existing content into blog structure ─────────────
   const generateBlogReady = useCallback(async (
@@ -563,6 +591,7 @@ export function useAIAssistant(editor: Editor | null) {
           action: "blog_ready",
           content: existingContent,
           language,
+          persona: selectedPersona,
         }),
       });
 
@@ -577,15 +606,22 @@ export function useAIAssistant(editor: Editor | null) {
       let html: string = textData.result || "";
       const groundingChunks: { url: string; title: string }[] = textData.groundingChunks || [];
 
-      // 2. Extract category
-      const catMatch = html.match(/\[CATEGORY:\s*([^\]]+)\]/i);
-      if (catMatch) {
-        const aiCategory = catMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
-        if (onSetCategory) onSetCategory(aiCategory);
-        html = html.replace(/\[CATEGORY:\s*[^\]]+\]/gi, "");
-      }
+      // 2. Extract metadata from XML (V3) with regex fallback (V2)
+      const xmlCategory = extractXMLTag(html, 'category');
+      const xmlSlug = extractXMLTag(html, 'slug');
+      const xmlMeta = extractXMLTag(html, 'meta_description');
+      const xmlKeywords = extractXMLTag(html, 'keywords');
 
-      // 3. Extract title from first H2
+      const catMatch = html.match(/\[CATEGORY:\s*([^\]]+)\]/i);
+      const aiCategory = xmlCategory
+        || (catMatch ? catMatch[1].trim().toLowerCase().replace(/\s+/g, "_") : "");
+      if (aiCategory && onSetCategory) onSetCategory(aiCategory);
+
+      // Strip XML wrappers
+      html = stripXMLWrappers(html);
+      html = html.replace(/\[CATEGORY:\s*[^\]]+\]/gi, "");
+
+      // 3. Extract title
       setAutoBlogProgress("Başlık ve slug oluşturuluyor...");
       const titleMatch = html.match(/<h[12][^>]*>(.*?)<\/h[12]>/i);
       const articleTitle = titleMatch
@@ -594,35 +630,30 @@ export function useAIAssistant(editor: Editor | null) {
 
       if (onSetTitle) onSetTitle(articleTitle);
 
-      // 3b. Generate SEO slug
+      // 3b. Slug: XML first, then local generation
       if (onSetSlug) {
-        try {
-          const slugRes = await fetch("/api/v1/admin/ai-assist", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "custom",
-              content: articleTitle,
-              title: articleTitle,
-              language,
-              prompt: `Bu makale başlığı için SEO-uyumlu bir URL slug üret. Kurallar: Sadece İngilizce küçük harf ve tire (-) kullan. Türkçe karakter kullanma. Kısa ve keyword-rich olsun (3-6 kelime). Sadece slug'ı döndür, başka bir şey yazma.`,
-            }),
-          });
-          if (slugRes.ok) {
-            const slugData = await slugRes.json();
-            const cleanSlug = (slugData.result as string)
-              .replace(/<[^>]*>/g, "").trim().toLowerCase()
-              .replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
-            if (cleanSlug.length > 3) onSetSlug(cleanSlug);
-          }
-        } catch (e) { console.warn("[Blog Ready] Slug failed:", e); }
+        if (xmlSlug && xmlSlug.length > 3) {
+          const cleanSlug = xmlSlug.toLowerCase()
+            .replace(/<[^>]*>/g, "").trim()
+            .replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+          if (cleanSlug.length > 3) onSetSlug(cleanSlug);
+        } else {
+          const fallbackSlug = articleTitle.toLowerCase()
+            .replace(/[çÇ]/g, "c").replace(/[ğĞ]/g, "g").replace(/[ıİ]/g, "i")
+            .replace(/[öÖ]/g, "o").replace(/[üÜ]/g, "u").replace(/[şŞ]/g, "s")
+            .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-")
+            .replace(/^-|-$/g, "").slice(0, 60);
+          if (fallbackSlug.length > 3) onSetSlug(fallbackSlug);
+        }
       }
 
-      // 4. Parse sources + verify
+      // 4. Parse sources from XML <ref_links> or old [SOURCES] block
+      const xmlRefLinks = extractXMLTag(html, 'ref_links');
       const sourcesMatch = html.match(/\[SOURCES\]([\s\S]*?)\[\/SOURCES\]/i);
+      const sourceText = xmlRefLinks || (sourcesMatch ? sourcesMatch[1] : "");
       const parsedSources: { title: string; url: string }[] = [];
-      if (sourcesMatch) {
-        const sourceLines = sourcesMatch[1].trim().split("\n").filter(l => l.trim());
+      if (sourceText) {
+        const sourceLines = sourceText.trim().split("\n").filter(l => l.trim());
         for (const line of sourceLines) {
           const clean = line.replace(/^\d+\.\s*/, "").trim();
           const pipeMatch = clean.match(/^(.+?)\s*\|\s*(https?:\/\/\S+)/);
@@ -725,43 +756,54 @@ export function useAIAssistant(editor: Editor | null) {
       setAutoBlogProgress("Editöre uygulanıyor...");
       editor.commands.setContent(html);
 
-      // 7. SEO Meta
-      setAutoBlogProgress("SEO meta üretiliyor...");
-      try {
-        const metaRes = await fetch("/api/v1/admin/ai-assist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "custom", content: html, title: articleTitle, language,
-            prompt: "Bu makale için Google SEO meta açıklaması yaz. Maksimum 155 karakter. Sadece açıklamayı döndür.",
-          }),
-        });
-        if (metaRes.ok) {
-          const metaData = await metaRes.json();
-          const cleanMeta = (metaData.result as string).replace(/<[^>]*>/g, "").trim().slice(0, 160);
-          setSeoMeta(cleanMeta);
-          if (onSetMetaDescription) onSetMetaDescription(cleanMeta);
-        }
-      } catch { /* silent */ }
+      // 7. SEO Meta: XML first, fallback to AI
+      if (xmlMeta && xmlMeta.length > 10) {
+        const cleanMeta = xmlMeta.replace(/<[^>]*>/g, "").trim().slice(0, 160);
+        setSeoMeta(cleanMeta);
+        if (onSetMetaDescription) onSetMetaDescription(cleanMeta);
+      } else {
+        setAutoBlogProgress("SEO meta üretiliyor...");
+        try {
+          const metaRes = await fetch("/api/v1/admin/ai-assist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "custom", content: html, title: articleTitle, language,
+              prompt: "Bu makale için Google SEO meta açıklaması yaz. Maksimum 155 karakter. Sadece açıklamayı döndür.",
+            }),
+          });
+          if (metaRes.ok) {
+            const metaData = await metaRes.json();
+            const cleanMeta = (metaData.result as string).replace(/<[^>]*>/g, "").trim().slice(0, 160);
+            setSeoMeta(cleanMeta);
+            if (onSetMetaDescription) onSetMetaDescription(cleanMeta);
+          }
+        } catch { /* silent */ }
+      }
 
-      // 8. Keywords
-      setAutoBlogProgress("Anahtar kelimeler çıkarılıyor...");
-      try {
-        const tagRes = await fetch("/api/v1/admin/ai-assist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "custom", content: html, title: articleTitle, language,
-            prompt: "Bu makale için 5-8 adet SEO anahtar kelime/tag çıkar. Virgülle ayırarak sadece kelimeleri döndür.",
-          }),
-        });
-        if (tagRes.ok) {
-          const tagData = await tagRes.json();
-          const raw = (tagData.result as string).replace(/<[^>]*>/g, "").trim();
-          const tags = raw.split(",").map(t => t.trim()).filter(t => t.length > 0 && t.length < 40);
-          setAutoTags(tags);
-        }
-      } catch { /* silent */ }
+      // 8. Keywords: XML first, fallback to AI
+      if (xmlKeywords && xmlKeywords.length > 3) {
+        const tags = xmlKeywords.replace(/<[^>]*>/g, "").split(",").map(t => t.trim()).filter(t => t.length > 0 && t.length < 40);
+        setAutoTags(tags);
+      } else {
+        setAutoBlogProgress("Anahtar kelimeler çıkarılıyor...");
+        try {
+          const tagRes = await fetch("/api/v1/admin/ai-assist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "custom", content: html, title: articleTitle, language,
+              prompt: "Bu makale için 5-8 adet SEO anahtar kelime/tag çıkar. Virgülle ayırarak sadece kelimeleri döndür.",
+            }),
+          });
+          if (tagRes.ok) {
+            const tagData = await tagRes.json();
+            const raw = (tagData.result as string).replace(/<[^>]*>/g, "").trim();
+            const tags = raw.split(",").map(t => t.trim()).filter(t => t.length > 0 && t.length < 40);
+            setAutoTags(tags);
+          }
+        } catch { /* silent */ }
+      }
 
       setAutoBlogProgress("");
     } catch (err) {
@@ -770,7 +812,7 @@ export function useAIAssistant(editor: Editor | null) {
     } finally {
       setAutoBlogLoading(false);
     }
-  }, [editor]);
+  }, [editor, selectedPersona]);
 
   return {
     aiOpen, setAiOpen,
@@ -783,6 +825,8 @@ export function useAIAssistant(editor: Editor | null) {
     generateAIImage, insertAIImage, insertImageIntoEditor,
     seoMeta, setSeoMeta, seoLoading, generateSEOMeta,
     handleSEOOptimize,
+    // Persona
+    selectedPersona, setSelectedPersona,
     // Auto Blog
     autoBlogLoading, autoBlogProgress, autoBlogIncludeImages,
     setAutoBlogIncludeImages, generateAutoBlog,

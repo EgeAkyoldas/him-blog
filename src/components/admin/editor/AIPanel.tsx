@@ -51,12 +51,22 @@ interface AIPanelProps {
   onRemoveTag: (tag: string) => void;
   // Blog Ready
   onBlogReady: () => void;
+  // Persona
+  selectedPersona: string;
+  onPersonaChange: (persona: string) => void;
 }
 
 const SIZE_OPTIONS = [
   { key: "landscape" as const, label: "16:9" },
   { key: "square" as const, label: "1:1" },
   { key: "portrait" as const, label: "9:16" },
+];
+
+const PERSONA_OPTIONS = [
+  { key: "philosopher_editor", label: "📝 Fulya", short: "Baş Editör" },
+  { key: "specialist", label: "🎓 Pedagog", short: "Uzman Pedagog" },
+  { key: "modern_guru", label: "⚡ Guru", short: "Modern Guru" },
+  { key: "news_anchor", label: "📊 Analist", short: "Sektör Analisti" },
 ];
 
 /* ─── İnline style helpers (brand token CSS vars) ─── */
@@ -104,6 +114,7 @@ function PanelContent({
   autoBlogLoading, autoBlogProgress, autoBlogIncludeImages,
   onAutoBlogIncludeImagesChange, onGenerateAutoBlog,
   autoTags, onRemoveTag, onBlogReady,
+  selectedPersona, onPersonaChange,
   onClose,
 }: Omit<AIPanelProps, "open"> & { onClose: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -169,6 +180,28 @@ function PanelContent({
         style={{ borderBottom: "1px solid var(--color-brand-border)" }}
       >
         <SectionLabel icon={Zap} label="Auto Blog" />
+        {/* Persona Pills */}
+        <div className="flex gap-1 mb-2 flex-wrap">
+          {PERSONA_OPTIONS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => onPersonaChange(p.key)}
+              className="px-2 py-1 text-[10px] font-semibold micro-radius transition-all"
+              style={
+                selectedPersona === p.key
+                  ? { ...BTN_FILLED, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }
+                  : {
+                      backgroundColor: "var(--color-brand-border)",
+                      color: "var(--color-secondary)",
+                      opacity: 0.8,
+                    }
+              }
+              title={p.short}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         <div className="flex gap-1.5 mb-2">
           <input
             type="text"
