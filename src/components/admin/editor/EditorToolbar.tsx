@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 import { ColorPicker } from "./ColorPicker";
+import { ArticleLinkPicker } from "./ArticleLinkPicker";
 
 // Toolbar button helper
 function TB({
@@ -106,6 +107,7 @@ export function EditorToolbar({
         disabled={aiImageLoading}
         title="AI Görsel Ekle"
       />
+      <ArticleLinkPicker editor={editor} />
 
       <Sep />
 

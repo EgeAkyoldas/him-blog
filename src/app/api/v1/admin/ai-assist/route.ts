@@ -7,13 +7,12 @@ import { loadAIPrompts, interpolate } from "@/lib/ai-prompts";
  */
 
 interface AIRequest {
-  action: "improve" | "expand" | "summarize" | "translate" | "generate" | "custom" | "bilingual" | "seo-optimize" | "auto_blog";
+  action: "improve" | "expand" | "summarize" | "translate" | "generate" | "custom" | "bilingual" | "seo-optimize" | "auto_blog" | "blog_ready";
   content?: string;
   title?: string;
   language?: string;
   prompt?: string;
   seoIssues?: string;
-  existingArticles?: string;
 }
 
 function buildPrompt(data: AIRequest): string {
@@ -30,9 +29,6 @@ function buildPrompt(data: AIRequest): string {
     prompt: data.prompt ?? "",
     seo_issues: data.seoIssues ?? "",
     dimension: "",
-    existing_articles: data.existingArticles
-      ? `Mevcut blog makaleleri:\n${data.existingArticles}\nBu makalelerden alakalı olanları metin içinde doğal şekilde <a href="/blog/SLUG">başlık</a> formatıyla linkle. Zorla linkleme, sadece konuyla gerçekten ilgili olanları kullan.`
-      : "Henüz mevcut makale yok, iç link ekleme.",
   };
 
   const actionKey = data.action === "seo-optimize" ? "seo_optimize" : data.action;
@@ -59,8 +55,8 @@ export async function POST(request: NextRequest) {
     const systemInstruction = config.system_instruction;
     const prompt = buildPrompt(body);
 
-    // Enable Google Search grounding for auto_blog to get real sources
-    const isAutoBlog = body.action === "auto_blog";
+    // Enable Google Search grounding for auto_blog and blog_ready to get real sources
+    const useSearch = body.action === "auto_blog" || body.action === "blog_ready";
 
     // Build request body
     const geminiBody: Record<string, unknown> = {
@@ -70,7 +66,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Add google search tool for auto_blog
-    if (isAutoBlog) {
+    if (useSearch) {
       geminiBody.tools = [{ googleSearch: {} }];
     }
 

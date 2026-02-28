@@ -95,7 +95,7 @@ export function ArticlesContent() {
             {articles.map((article) => (
               <Link
                 key={article.id}
-                href={`/articles/${article.slug}`}
+                href={`/blog/${article.slug}`}
                 className="card-boutique p-8 no-underline group hover:border-deep-navy dark:hover:border-gold-accent transition-all"
               >
                 <div className="flex items-center gap-2 mb-4">

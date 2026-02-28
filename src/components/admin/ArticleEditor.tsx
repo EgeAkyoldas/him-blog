@@ -283,91 +283,100 @@ export default function ArticleEditor({ articleId }: Props) {
                   ))}
                 </div>
 
-                {/* Title */}
-                <input type="text" placeholder="Makale başlığı..." value={form.title}
-                  onChange={(e) => form.autoSlug(e.target.value)}
-                  className="input-boutique text-[16px] font-semibold w-full mb-3"
-                  style={{ fontFamily: "var(--font-heading)" }} />
+                {/* ─── Two-column: Fields (left) + Cover Image (right) ─── */}
+                <div className="flex gap-4 flex-col lg:flex-row">
 
-                {/* Slug + Category */}
-                <div className="flex gap-3 flex-wrap">
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="label text-secondary mb-1 block">SLUG</label>
-                    <input type="text" value={form.slug} onChange={(e) => form.setSlug(e.target.value)}
-                      className="input-boutique text-[12px] w-full font-mono" />
-                  </div>
-                  <div className="flex-1 min-w-[140px]">
-                    <label className="label text-secondary mb-1 block">KATEGORİ</label>
-                    {/* Check if current category is a known one */}
-                    {(() => {
-                      const knownValues = categories.map((c: { value: string; label: string }) => c.value);
-                      const isCustom = !knownValues.includes(form.category);
-                      return (
-                        <div className="space-y-1.5">
-                          <select
-                            value={isCustom ? "__custom__" : form.category}
-                            onChange={(e) => {
-                              if (e.target.value === "__custom__") {
-                                form.setCategory("");
-                              } else {
-                                form.setCategory(e.target.value);
-                              }
-                            }}
-                            className="input-boutique text-[12px] w-full"
-                          >
-                            {categories.map((c: { value: string; label: string }) => (
-                              <option key={c.value} value={c.value}>{c.label}</option>
-                            ))}
-                            <option value="__custom__">✏️ Özel Kategori...</option>
-                          </select>
-                          {(isCustom || form.category === "") && (
-                            <input
-                              type="text"
-                              placeholder="Kategori adı girin..."
-                              value={isCustom ? form.category : ""}
-                              onChange={(e) => form.setCategory(e.target.value)}
-                              className="input-boutique text-[12px] w-full"
-                              autoFocus
-                            />
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Thumbnail — per language */}
-                <div className="mt-4">
-                  <label className="label text-secondary mb-2 flex items-center gap-1.5">
-                    KAPAK GÖRSELİ
-                    <span className="px-1 py-0.5 bg-deep-navy text-pure-white text-[8px] font-bold tracking-widest micro-radius">
-                      {form.language.toUpperCase()}
-                    </span>
-                  </label>
-                  {activeThumbnail ? (
-                    <div className="relative group">
-                      <div className="relative w-full h-[200px] micro-radius overflow-hidden border border-border">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={activeThumbnail} alt="Thumbnail" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => images.thumbnailRef.current?.click()}
-                          className="text-[10px] font-bold px-2 py-1 bg-pure-white/90 border border-muted-slate micro-radius hover:bg-deep-navy hover:text-pure-white hover:border-deep-navy transition-all">
-                          Değiştir
-                        </button>
-                        <button onClick={() => images.setThumbnail(null, form.language)}
-                          className="text-[10px] font-bold px-2 py-1 bg-pure-white/90 border border-muted-slate micro-radius hover:bg-rose-500 hover:text-pure-white hover:border-rose-500 transition-all">
-                          Kaldır
-                        </button>
-                      </div>
+                  {/* LEFT: Title, Slug, Category */}
+                  <div className="flex-1 space-y-3 min-w-0">
+                    {/* Title */}
+                    <div>
+                      <label className="label text-secondary mb-1 block">BAŞLIK</label>
+                      <input type="text" placeholder="Makale başlığı..." value={form.title}
+                        onChange={(e) => form.autoSlug(e.target.value)}
+                        className="input-boutique text-[15px] font-semibold w-full"
+                        style={{ fontFamily: "var(--font-heading)" }} />
                     </div>
-                  ) : (
-                    <button onClick={() => images.thumbnailRef.current?.click()}
-                      className="w-full h-[140px] border-2 border-dashed border-border micro-radius text-muted hover:border-heading hover:text-heading hover:bg-surface-overlay transition-all flex flex-col items-center justify-center gap-2 text-[12px] font-bold tracking-wider">
-                      {form.language.toUpperCase()} kapak görseli yükle
-                      <span className="text-[10px] font-normal opacity-50">AI ile de oluşturabilirsiniz</span>
-                    </button>
-                  )}
+
+                    {/* Slug */}
+                    <div>
+                      <label className="label text-secondary mb-1 block">SLUG</label>
+                      <input type="text" value={form.slug} onChange={(e) => form.setSlug(e.target.value)}
+                        className="input-boutique text-[12px] w-full font-mono" />
+                    </div>
+
+                    {/* Category */}
+                    <div>
+                      <label className="label text-secondary mb-1 block">KATEGORİ</label>
+                      {(() => {
+                        const knownValues = categories.map((c: { value: string; label: string }) => c.value);
+                        const isCustom = !knownValues.includes(form.category);
+                        return (
+                          <div className="space-y-1.5">
+                            <select
+                              value={isCustom ? "__custom__" : form.category}
+                              onChange={(e) => {
+                                if (e.target.value === "__custom__") {
+                                  form.setCategory("");
+                                } else {
+                                  form.setCategory(e.target.value);
+                                }
+                              }}
+                              className="input-boutique text-[12px] w-full"
+                            >
+                              {categories.map((c: { value: string; label: string }) => (
+                                <option key={c.value} value={c.value}>{c.label}</option>
+                              ))}
+                              <option value="__custom__">✏️ Özel Kategori...</option>
+                            </select>
+                            {(isCustom || form.category === "") && (
+                              <input
+                                type="text"
+                                placeholder="Kategori adı girin..."
+                                value={isCustom ? form.category : ""}
+                                onChange={(e) => form.setCategory(e.target.value)}
+                                className="input-boutique text-[12px] w-full"
+                                autoFocus
+                              />
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* RIGHT: Cover Image */}
+                  <div className="w-full lg:w-[250px]  shrink-0">
+                    <label className="label text-secondary mb-1 flex items-center gap-1.5">
+                      KAPAK GÖRSELİ
+                      <span className="px-1 py-0.5 bg-deep-navy text-pure-white text-[8px] font-bold tracking-widest micro-radius">
+                        {form.language.toUpperCase()}
+                      </span>
+                    </label>
+                    {activeThumbnail ? (
+                      <div className="relative group">
+                        <div className="relative w-full aspect-[4/3] micro-radius overflow-hidden border border-border">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={activeThumbnail} alt="Thumbnail" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => images.thumbnailRef.current?.click()}
+                            className="text-[9px] font-bold px-1.5 py-0.5 bg-pure-white/90 border border-muted-slate micro-radius hover:bg-deep-navy hover:text-pure-white hover:border-deep-navy transition-all">
+                            Değiştir
+                          </button>
+                          <button onClick={() => images.setThumbnail(null, form.language)}
+                            className="text-[9px] font-bold px-1.5 py-0.5 bg-pure-white/90 border border-muted-slate micro-radius hover:bg-rose-500 hover:text-pure-white hover:border-rose-500 transition-all">
+                            Kaldır
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => images.thumbnailRef.current?.click()}
+                        className="w-full aspect-[4/3] border-2 border-dashed border-border micro-radius text-muted hover:border-heading hover:text-heading hover:bg-surface-overlay transition-all flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold tracking-wider">
+                        {form.language.toUpperCase()} kapak
+                        <span className="text-[9px] font-normal opacity-50">Yükle veya AI ile üret</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -491,10 +500,22 @@ export default function ArticleEditor({ articleId }: Props) {
                 form.autoSlug,
                 form.setCategory,
                 form.setSlug,
+                (text) => form.setMetaDescription(text, form.language),
               )
             }
             autoTags={ai.autoTags}
             onRemoveTag={(tag) => ai.setAutoTags(prev => prev.filter(t => t !== tag))}
+            onBlogReady={() =>
+              ai.generateBlogReady(
+                form.slug,
+                form.language,
+                (url) => images.setThumbnail(url, form.language),
+                form.autoSlug,
+                form.setCategory,
+                form.setSlug,
+                (text) => form.setMetaDescription(text, form.language),
+              )
+            }
           />
         </div>
 

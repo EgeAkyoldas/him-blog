@@ -49,6 +49,8 @@ interface AIPanelProps {
   // Tags
   autoTags: string[];
   onRemoveTag: (tag: string) => void;
+  // Blog Ready
+  onBlogReady: () => void;
 }
 
 const SIZE_OPTIONS = [
@@ -101,7 +103,7 @@ function PanelContent({
   seoMeta, seoLoading, onGenerateSEO, onClearSEO, onSetSeoMeta, onApplySEOMeta,
   autoBlogLoading, autoBlogProgress, autoBlogIncludeImages,
   onAutoBlogIncludeImagesChange, onGenerateAutoBlog,
-  autoTags, onRemoveTag,
+  autoTags, onRemoveTag, onBlogReady,
   onClose,
 }: Omit<AIPanelProps, "open"> & { onClose: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -216,7 +218,7 @@ function PanelContent({
         {sectionOpen.textOps && (
           <div className="grid grid-cols-4 gap-1.5">
             {aiActions.map((a) => (
-              <button key={a.action} onClick={() => onCallAI(a.action)} disabled={aiLoading}
+              <button key={a.action} onClick={() => a.action === 'blog_ready' ? onBlogReady() : onCallAI(a.action)} disabled={aiLoading || (a.action === 'blog_ready' && autoBlogLoading)}
                 className="flex flex-col items-center gap-1 p-2 micro-radius transition-all group disabled:opacity-30 text-center"
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-raised)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}

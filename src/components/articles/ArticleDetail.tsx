@@ -80,7 +80,7 @@ export function ArticleDetail({
             Bu makale henüz yayınlanmamış veya mevcut değil.
           </p>
           <Link
-            href="/articles"
+            href="/blog"
             className="btn-primary no-underline inline-flex items-center gap-2"
           >
             <ArrowLeft size={14} />
@@ -101,7 +101,7 @@ export function ArticleDetail({
           className="mb-10"
         >
           <Link
-            href="/articles"
+            href="/blog"
             className="flex items-center gap-2 text-[13px] text-secondary hover:text-deep-navy dark:hover:text-gold-accent transition-colors no-underline"
           >
             <ArrowLeft size={14} />

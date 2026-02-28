@@ -100,6 +100,39 @@ actions:
     Mevcut İçerik:
     {content}
 
+  blog_ready: |
+    Aşağıdaki metni blog-ready formata dönüştür.
+
+    ÖNEMLİ KURALLAR:
+    - İçeriğin anlamını, mesajını ve tonunu DEĞİŞTİRME.
+    - Yeni bilgi EKLEME, var olanı değiştirme.
+    - Sadece yapısal düzenleme yap:
+      * Ana konuları tespit et ve <h2> başlıkları ekle
+      * Alt konuları <h3> ile işaretle
+      * Paragrafları <p> ile sar, boş metin bırakma
+      * Listeleri <ul>/<ol> ve <li> ile formatla
+      * Önemli terimleri <strong> ile vurgula
+    - Kaynak araştır ve metin içindeki iddialara <sup>[1]</sup> referans ekle
+    - Makalenin sonuna şu formatta kaynak listesi ekle:
+      [SOURCES]
+      1. Kaynak Başlığı | https://gercek-url.com/sayfa
+      [/SOURCES]
+    - Tam ve geçerli HTML formatında yaz. Markdown KULLANMA.
+    - Kategori etiketi koy: [CATEGORY: theory/instrument/ear_training/sight_reading/performance/exam_prep/other]
+
+    GÖRSEL YERLEŞİMİ:
+    - İçeriğin uygun yerlerine görsel placeholder koy.
+    - Format: [IMAGE: açıklama | SIZE: boyut]
+    - SIZE: landscape, square veya portrait
+    - İlk görseli landscape yap. Diğerlerini karıştır.
+    - Toplam 2-4 görsel placeholder kullan.
+    - Görsel açıklamalarını İngilizce ve içerikle tutarlı yaz.
+
+    Dil: {language}
+
+    Mevcut İçerik:
+    {content}
+
   auto_blog: |
     "{title}" konusu için tam bir müzik eğitimi blog makalesi oluştur.
 
@@ -113,19 +146,20 @@ actions:
     - Her bölümde detaylı açıklama, pratik ipuçları, örnekler ver.
     - Makale 800-1200 kelime arasında olsun.
     - Paragraflar arasında doğal geçişler yap.
+    - Başka blog makalelerine veya iç kaynaklara link VERME. Sadece dış kaynaklara link ver.
 
     KAYNAK VE REFERANS:
-    - Konuyu araştır, güvenilir kaynaklara dayalı bilgiler ver.
+    - Konuyu web'de araştır, güvenilir ve gerçek kaynaklara dayalı bilgiler ver.
     - Metin içinde önemli bilgileri kaynak numarası ile işaretle: <sup>[1]</sup>, <sup>[2]</sup>
+    - SADECE gerçek, erişilebilir web URL'leri kullan. Uydurma link verme.
+    - Kitap referansı verirsen, kitabın gerçek bir web sayfasına (Amazon, Google Books vb.) link ver.
     - Makalenin en sonuna şu formatta bir kaynak listesi ekle:
       [SOURCES]
-      1. Kaynak başlığı — URL veya kitap/makale adı
-      2. Kaynak başlığı — URL veya kitap/makale adı
+      1. Kaynak Başlığı | https://gercek-url.com/sayfa
+      2. Kaynak Başlığı | https://gercek-url.com/sayfa
       [/SOURCES]
-    - En az 2-3, en fazla 6 kaynak kullan.
-
-    İÇ LİNKLER:
-    {existing_articles}
+    - Her kaynağın mutlaka gerçek bir URL'si olmalı.
+    - En az 3, en fazla 6 kaynak kullan.
 
     KATEGORİ SEÇİMİ:
     - Makalenin ilk satırına aşağıdaki formatla bir kategori etiketi koy:
@@ -148,9 +182,25 @@ actions:
     Dil: {language}
 
 image_prompt: |
-  Generate a professional, editorial-style image for a music education blog article.
-  The image should be warm, inviting, and related to music education.
-  Style: Clean, minimalistic, soft lighting, cream and warm tones.
-  No text in the image. No watermarks.
-  Generate in {dimension}.
-  Concept: {prompt}
+  Create a professional editorial photograph for a music education blog article.
+
+  ARTICLE CONTEXT:
+  - Article: "{article_title}"
+  - Theme: {article_context}
+
+  VISUAL REQUIREMENTS:
+  - The image must directly illustrate: {prompt}
+  - Style: Clean editorial photography, soft warm lighting (golden hour feel)
+  - Color palette: Warm tones — cream, amber, deep brown, muted gold
+  - Mood: Educational, inviting, professional but approachable
+  - Depth of field: Shallow where appropriate (bokeh backgrounds)
+  - NO text, NO watermarks, NO logos, NO UI elements
+  - NO cartoon or illustration style — photorealistic only
+  - The image should feel like it belongs to a premium music education magazine
+
+  CONSISTENCY RULE:
+  All images in this article should share the same visual language —
+  same color temperature, same lighting style, same photographic approach.
+  Think of them as a cohesive photo series for one article spread.
+
+  FORMAT: Generate in {dimension}.

@@ -6,6 +6,7 @@ import {
   Sparkles,
   Globe,
   MessageSquare,
+  FileCheck,
 } from "lucide-react";
 import type { AIAction, CategoryOption } from "@/types";
 
@@ -39,5 +40,7 @@ export const aiActions: {
   { action: "translate", icon: Languages, label: "Çevir", desc: "Dile çevir" },
   { action: "generate", icon: Sparkles, label: "Üret", desc: "Başlıktan yaz" },
   { action: "bilingual", icon: Globe, label: "İki Dil", desc: "TR + EN üret" },
+  { action: "blog_ready", icon: FileCheck, label: "Blog Hazırla", desc: "İçeriği blog formatla" },
   { action: "custom", icon: MessageSquare, label: "Özel", desc: "Serbest mesaj" },
 ];
+

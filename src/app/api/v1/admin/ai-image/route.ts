@@ -28,7 +28,7 @@ async function ensureBucket() {
 export async function POST(request: NextRequest) {
   try {
     await ensureBucket();
-    const { prompt, articleSlug, aspectRatio } = await request.json();
+    const { prompt, articleSlug, aspectRatio, articleTitle, articleContext } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY;
     const model = process.env.GEMINI_IMAGE_MODEL || "gemini-2.0-flash-exp";
 
@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
     const imagePrompt = interpolate(config.image_prompt, {
       dimension: dimensionHint,
       prompt,
+      article_title: articleTitle || "Music Education Article",
+      article_context: articleContext || "Music education, practice, and learning",
     });
 
     const res = await fetch(

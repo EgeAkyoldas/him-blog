@@ -14,6 +14,7 @@ export type AIAction =
   | "generate"
   | "bilingual"
   | "custom"
+  | "blog_ready"
   | "auto_blog";
 
 export type ImageAspectRatio = "landscape" | "portrait" | "square";
