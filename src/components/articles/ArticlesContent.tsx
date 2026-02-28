@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FileText, Calendar, ArrowRight } from "lucide-react";
+import { FileText, Calendar, ArrowRight, Settings } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -55,15 +55,26 @@ export function ArticlesContent() {
           transition={{ duration: 0.6 }}
           className="mb-16"
         >
-          <div className="label mb-3">
-            MAKALELER
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="label mb-3">
+                MAKALELER
+              </div>
+              <h1
+                className="text-heading text-[40px] md:text-[52px]"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Makaleler
+              </h1>
+            </div>
+            <Link
+              href="/admin/articles"
+              className="flex items-center gap-2 px-4 py-2 text-[12px] font-medium text-muted hover:text-heading bg-pure-white dark:bg-charcoal border border-border rounded-lg no-underline transition-all hover:shadow-sm mt-2"
+            >
+              <Settings size={14} strokeWidth={1.5} />
+              Yönetim Paneli
+            </Link>
           </div>
-          <h1
-            className="text-heading text-[40px] md:text-[52px]"
-            style={{ fontFamily: "var(--font-heading)" }}
-          >
-            Makaleler
-          </h1>
         </motion.div>
 
         {/* Content */}
