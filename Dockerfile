@@ -20,14 +20,9 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-<<<<<<< HEAD
 ENV DOCKER_BUILD=1
 
 RUN npx next build
-=======
-
-RUN npm run build
->>>>>>> 44570a8debab986e7af5daa7d16d3cedf6fde83a
 
 # ---- Production ----
 FROM base AS runner
@@ -50,8 +45,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-<<<<<<< HEAD
 CMD ["node", "server.js"]
-=======
-CMD ["node", "server.js"]
->>>>>>> 44570a8debab986e7af5daa7d16d3cedf6fde83a

@@ -7,7 +7,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { aiActions } from "./constants";
 import type { AIAction } from "./types";
 
@@ -62,7 +62,7 @@ const SIZE_OPTIONS = [
   { key: "portrait" as const, label: "9:16" },
 ];
 
-const PERSONA_OPTIONS = [
+const INITIAL_PERSONAS = [
   { key: "philosopher_editor", label: "📝 Fulya", short: "Baş Editör" },
   { key: "specialist", label: "🎓 Pedagog", short: "Uzman Pedagog" },
   { key: "modern_guru", label: "⚡ Guru", short: "Modern Guru" },
@@ -121,6 +121,26 @@ function PanelContent({
   const [editingMeta, setEditingMeta] = useState(false);
   const [editMetaText, setEditMetaText] = useState("");
   const [autoBlogTopic, setAutoBlogTopic] = useState("");
+  // Dynamic personas from API
+  const [personaOptions, setPersonaOptions] = useState(INITIAL_PERSONAS);
+  useEffect(() => {
+    fetch("/api/v1/admin/ai-personas")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.personas?.length > 0) {
+          setPersonaOptions(
+            data.personas
+              .filter((p: { is_active: boolean }) => p.is_active)
+              .map((p: { id: string; name: string }) => ({
+                key: p.id,
+                label: p.name,
+                short: p.name,
+              }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
   // Collapsible section state
   const [sectionOpen, setSectionOpen] = useState<Record<string, boolean>>({
     textOps: false,
@@ -182,7 +202,7 @@ function PanelContent({
         <SectionLabel icon={Zap} label="Auto Blog" />
         {/* Persona Pills */}
         <div className="flex gap-1 mb-2 flex-wrap">
-          {PERSONA_OPTIONS.map((p) => (
+          {personaOptions.map((p) => (
             <button
               key={p.key}
               onClick={() => onPersonaChange(p.key)}

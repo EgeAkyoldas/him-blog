@@ -1,13 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadAIPrompts, getPersona, interpolate } from "@/lib/ai-prompts";
+import {
+  loadAIPromptsFromDB,
+  getPersona,
+  interpolate,
+} from "@/lib/ai-prompts";
+import type { AIPromptConfig } from "@/lib/ai-prompts";
 
 /**
  * POST /api/v1/admin/ai-assist — AI text generation using Google Gemini.
  * Supports multi-persona system: persona-specific system instructions and prompt injection.
+ * Loads prompts from database (with YAML fallback).
  */
 
 interface AIRequest {
-  action: "improve" | "expand" | "summarize" | "translate" | "generate" | "custom" | "bilingual" | "seo-optimize" | "auto_blog" | "blog_ready";
+  action:
+    | "improve"
+    | "expand"
+    | "summarize"
+    | "translate"
+    | "generate"
+    | "custom"
+    | "bilingual"
+    | "seo-optimize"
+    | "auto_blog"
+    | "blog_ready";
   content?: string;
   title?: string;
   language?: string;
@@ -30,8 +46,10 @@ const TEMPERATURE_MAP: Record<string, number> = {
   auto_blog: 0.85,
 };
 
-function buildSystemInstruction(persona: ReturnType<typeof getPersona>): string {
-  const config = loadAIPrompts();
+function buildSystemInstruction(
+  persona: ReturnType<typeof getPersona>,
+  config: AIPromptConfig
+): string {
   const base = config.system_instruction;
   const globalNeg = config.global_rules?.negative_constraints || "";
   const globalStyle = config.global_rules?.writing_style_rules || "";
@@ -42,15 +60,24 @@ function buildSystemInstruction(persona: ReturnType<typeof getPersona>): string 
     `\n--- ACTIVE PERSONA: ${persona.name} ---`,
     `TONE: ${persona.tone}`,
     persona.instruction,
-    persona.writing_style_rules ? `WRITING STYLE:\n${persona.writing_style_rules}` : "",
+    persona.writing_style_rules
+      ? `WRITING STYLE:\n${persona.writing_style_rules}`
+      : "",
     `GLOBAL WRITING RULES:\n${globalStyle}`,
     `GLOBAL NEGATIVE CONSTRAINTS:\n${globalNeg}`,
-    persona.negative_constraints ? `PERSONA NEGATIVE CONSTRAINTS:\n${persona.negative_constraints}` : "",
-  ].filter(Boolean).join("\n\n");
+    persona.negative_constraints
+      ? `PERSONA NEGATIVE CONSTRAINTS:\n${persona.negative_constraints}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
-function buildPrompt(data: AIRequest, persona: ReturnType<typeof getPersona>): string {
-  const config = loadAIPrompts();
+function buildPrompt(
+  data: AIRequest,
+  persona: ReturnType<typeof getPersona>,
+  config: AIPromptConfig
+): string {
   const lang = data.language === "en" ? "en" : "tr";
   const langName = lang === "en" ? "English" : "Türkçe";
   const targetLang = lang === "tr" ? "English" : "Türkçe";
@@ -70,7 +97,8 @@ function buildPrompt(data: AIRequest, persona: ReturnType<typeof getPersona>): s
     persona_writing_style: persona.writing_style_rules || "",
   };
 
-  const actionKey = data.action === "seo-optimize" ? "seo_optimize" : data.action;
+  const actionKey =
+    data.action === "seo-optimize" ? "seo_optimize" : data.action;
   const template = config.actions[actionKey];
 
   if (template) {
@@ -87,17 +115,25 @@ export async function POST(request: NextRequest) {
     const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
     if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Gemini API key not configured" },
+        { status: 500 }
+      );
     }
 
+    // Load config from DB (with YAML fallback)
+    const config = await loadAIPromptsFromDB();
+
     // Resolve persona (falls back to philosopher_editor)
-    const persona = getPersona(body.persona);
-    const systemInstruction = buildSystemInstruction(persona);
-    const prompt = buildPrompt(body, persona);
-    const actionKey = body.action === "seo-optimize" ? "seo_optimize" : body.action;
+    const persona = getPersona(body.persona, config);
+    const systemInstruction = buildSystemInstruction(persona, config);
+    const prompt = buildPrompt(body, persona, config);
+    const actionKey =
+      body.action === "seo-optimize" ? "seo_optimize" : body.action;
 
     // Enable Google Search grounding for auto_blog and blog_ready to get real sources
-    const useSearch = body.action === "auto_blog" || body.action === "blog_ready";
+    const useSearch =
+      body.action === "auto_blog" || body.action === "blog_ready";
 
     // Build request body
     const geminiBody: Record<string, unknown> = {
@@ -127,7 +163,10 @@ export async function POST(request: NextRequest) {
     if (!res.ok) {
       const err = await res.text();
       console.error("Gemini API error:", err);
-      return NextResponse.json({ error: "AI service error" }, { status: 502 });
+      return NextResponse.json(
+        { error: "AI service error" },
+        { status: 502 }
+      );
     }
 
     const data = await res.json();
@@ -135,12 +174,15 @@ export async function POST(request: NextRequest) {
 
     // Extract grounding metadata if available (for auto_blog w/ search)
     const groundingMeta = data.candidates?.[0]?.groundingMetadata;
-    const groundingChunks = groundingMeta?.groundingChunks?.map(
-      (chunk: { web?: { uri?: string; title?: string } }) => ({
-        url: chunk.web?.uri ?? "",
-        title: chunk.web?.title ?? "",
-      })
-    )?.filter((c: { url: string }) => c.url) ?? [];
+    const groundingChunks =
+      groundingMeta?.groundingChunks
+        ?.map(
+          (chunk: { web?: { uri?: string; title?: string } }) => ({
+            url: chunk.web?.uri ?? "",
+            title: chunk.web?.title ?? "",
+          })
+        )
+        ?.filter((c: { url: string }) => c.url) ?? [];
 
     return NextResponse.json({
       result: text,
@@ -148,6 +190,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("AI assist error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

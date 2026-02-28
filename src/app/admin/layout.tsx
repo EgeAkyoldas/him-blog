@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Music, FileText, PenTool, BookOpen, HelpCircle } from "lucide-react";
+import { Music, FileText, PenTool, HelpCircle, Sparkles, Globe } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -45,13 +45,23 @@ export default function AdminLayout({
             Yeni Makale
           </Link>
 
-          <div className="label text-muted px-3 mb-2 mt-6">GÖRÜNTÜLE</div>
+          <div className="label text-muted px-3 mb-2 mt-6">AYARLAR</div>
           <Link
-            href="/articles"
+            href="/admin/ai-config"
             className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] font-medium text-secondary hover:text-heading hover:bg-surface transition-all no-underline"
           >
-            <BookOpen size={15} strokeWidth={1.5} />
-            Public Blog
+            <Sparkles size={15} strokeWidth={1.5} />
+            AI Ayarları
+          </Link>
+
+          <div className="label text-muted px-3 mb-2 mt-6">GÖRÜNTÜLE</div>
+          <Link
+            href="/blog"
+            target="_blank"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] font-medium text-secondary hover:text-heading hover:bg-surface transition-all no-underline"
+          >
+            <Globe size={15} strokeWidth={1.5} />
+            Blog Sayfası
           </Link>
 
           <div className="label text-muted px-3 mb-2 mt-6">YARDIM</div>

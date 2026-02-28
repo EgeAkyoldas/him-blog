@@ -172,9 +172,10 @@ export function ArticlesList() {
 
               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-4">
                 <Link
-                  href={`/admin/articles/${article.id}/edit`}
+                  href={`/blog/${article.slug}`}
+                  target="_blank"
                   className="p-2 text-muted hover:text-deep-navy transition-colors no-underline"
-                  title="Görüntüle"
+                  title="Önizle"
                 >
                   <Eye size={16} strokeWidth={1.5} />
                 </Link>
