@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, ArrowLeft, Tag } from "lucide-react";
+import { Calendar, ArrowLeft, Tag, BookOpen, Type } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -116,7 +116,7 @@ export function ArticleDetail({
           transition={{ duration: 0.5 }}
           className="mb-12"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-6 flex-wrap">
             <span className="label text-muted text-[10px] bg-surface-raised dark:bg-surface px-2.5 py-1 micro-radius flex items-center gap-1.5">
               <Tag size={10} />
               {categoryLabels[article.category] ?? article.category}
@@ -129,6 +129,23 @@ export function ArticleDetail({
                 year: "numeric",
               })}
             </span>
+            {(() => {
+              const text = article.content.replace(/<[^>]*>/g, "").trim();
+              const words = text.split(/\s+/).filter(Boolean).length;
+              const readMin = Math.max(1, Math.round(words / 200));
+              return (
+                <>
+                  <span className="flex items-center gap-1.5 text-[12px] text-muted">
+                    <BookOpen size={12} />
+                    {readMin} dk okuma
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[12px] text-muted">
+                    <Type size={12} />
+                    {words.toLocaleString("tr-TR")} kelime
+                  </span>
+                </>
+              );
+            })()}
           </div>
 
           <h1
