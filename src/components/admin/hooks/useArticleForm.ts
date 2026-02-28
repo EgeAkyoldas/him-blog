@@ -177,6 +177,14 @@ export function useArticleForm(articleId: string | undefined, editor: Editor | n
 
     setSaving(true);
     setSaveError(null);
+
+    // Update cache for current language before saving
+    translationCache.current[language] = {
+      title: titleToSend,
+      content: editor.getHTML(),
+      meta_description: metaDesc !== undefined ? metaDesc : translationCache.current[language].meta_description,
+    };
+
     const finalMeta = metaDesc !== undefined
       ? metaDesc
       : translationCache.current[language].meta_description;
@@ -195,12 +203,33 @@ export function useArticleForm(articleId: string | undefined, editor: Editor | n
       });
 
       if (res.ok) {
+        let effectiveId = id;
         if (!id) {
           const data = await res.json().catch(() => null);
           if (data?.article?.id) {
             createdArticleIdRef.current = data.article.id;
+            effectiveId = data.article.id;
           }
         }
+
+        // Save the OTHER language too if it has content
+        const otherLang: Lang = language === "tr" ? "en" : "tr";
+        const otherCache = translationCache.current[otherLang];
+        if (effectiveId && otherCache.title.trim() && otherCache.content.trim()) {
+          await fetch(`/api/v1/admin/articles/${effectiveId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              language: otherLang,
+              title: otherCache.title,
+              content: otherCache.content,
+              status,
+              thumbnail,
+              meta_description: otherCache.meta_description ?? null,
+            }),
+          }).catch(() => { /* silent — primary save already succeeded */ });
+        }
+
         setSaved(true);
         setLastSavedAt(new Date());
         setIsDirty(false);

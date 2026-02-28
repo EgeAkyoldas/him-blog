@@ -65,7 +65,7 @@ const createSchema = z.object({
   language: z.enum(["tr", "en"]),
   content: z.string().min(1),
   thumbnail: z.string().nullable().optional(),
-  meta_description: z.string().max(160).nullable().optional(),
+  meta_description: z.string().nullable().optional(),
   status: z.enum(["draft", "published"]),
 });
 
@@ -111,9 +111,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("Failed to create article:", error);
+    console.error("Failed to create article:", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: error instanceof Error ? error.message : "Internal Server Error" },
       { status: 500 }
     );
   }

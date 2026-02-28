@@ -47,7 +47,7 @@ const updateSchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
   thumbnail: z.string().nullable().optional(),
-  meta_description: z.string().max(160).nullable().optional(),
+  meta_description: z.string().nullable().optional(),
   status: z.enum(["draft", "published"]),
 });
 
