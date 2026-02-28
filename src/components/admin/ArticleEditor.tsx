@@ -29,6 +29,7 @@ import { SitePreview } from "./editor/SitePreview";
 import { EditorFooter } from "./editor/EditorFooter";
 import { FindReplaceBar } from "./editor/FindReplaceBar";
 import { TemplateSelector } from "./editor/TemplateSelector";
+import { ExportDropdown } from "./editor/ExportDropdown";
 
 import { categories } from "./editor/constants";
 import type { ViewMode } from "./editor/types";
@@ -243,6 +244,13 @@ export default function ArticleEditor({ articleId }: Props) {
                 className="p-2 text-muted hover:text-heading transition-colors border border-border micro-radius">
                 <Keyboard size={14} />
               </button>
+
+              {/* Export dropdown */}
+              <ExportDropdown
+                title={form.title}
+                content={editor?.getHTML() ?? ""}
+                language={form.language}
+              />
 
               {/* AI toggle */}
               <button onClick={() => ai.setAiOpen((v) => !v)}
