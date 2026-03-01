@@ -320,6 +320,44 @@ body {
 .ProseMirror strong { color: var(--color-heading); }
 .ProseMirror em { color: inherit; }
 
+/* YouTube — compact in editor, full-size on site */
+.ProseMirror div[data-youtube-video] {
+  max-width: 400px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 12px 0;
+  border: 1px solid var(--color-border);
+}
+.ProseMirror div[data-youtube-video].ProseMirror-selectednode {
+  outline: 2px solid var(--color-charcoal);
+  outline-offset: 2px;
+}
+
+/* Video — compact in editor */
+.ProseMirror video {
+  max-width: 400px;
+  max-height: 240px;
+  border-radius: 8px;
+  margin: 12px 0;
+  border: 1px solid var(--color-border);
+  display: block;
+}
+.ProseMirror video.ProseMirror-selectednode {
+  outline: 2px solid var(--color-charcoal);
+  outline-offset: 2px;
+}
+
+/* Audio — compact in editor */
+.ProseMirror audio {
+  max-width: 360px;
+  margin: 12px 0;
+  display: block;
+}
+.ProseMirror audio.ProseMirror-selectednode {
+  outline: 2px solid var(--color-charcoal);
+  outline-offset: 2px;
+}
+
 /* Resizable image */
 .image-resize-container { position: relative; display: inline-block; }
 .image-resize-handle {
@@ -408,6 +446,28 @@ body {
   /* Links */
   a { color: var(--color-deep-navy); text-decoration: underline; }
   a:hover { opacity: 0.8; }
+
+  /* YouTube embeds — full responsive on site */
+  div[data-youtube-video] {
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+
+  /* Video — full width on site */
+  video {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    display: block;
+  }
+
+  /* Audio — full width on site */
+  audio {
+    width: 100%;
+    margin: 1.5rem 0;
+    display: block;
+  }
 }
 
 /* Dark mode overrides */

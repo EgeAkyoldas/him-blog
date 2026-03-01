@@ -12,11 +12,15 @@ import Color from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import { ResizableImage } from "./editor/ResizableImageExtension";
+import { Youtube } from "./editor/extensions/YoutubeExtension";
+import { Video } from "./editor/extensions/VideoExtension";
+import { Audio } from "./editor/extensions/AudioExtension";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Sparkles, Loader2, Expand, Shrink, HelpCircle, Keyboard
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 
 import { useArticleForm } from "./hooks/useArticleForm";
 import { useEditorImages } from "./hooks/useEditorImages";
@@ -98,6 +102,8 @@ export default function ArticleEditor({ articleId }: Props) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showTemplates, setShowTemplates] = useState(!articleId); // show on new article
   const editorAreaRef = useRef<HTMLDivElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -108,6 +114,9 @@ export default function ArticleEditor({ articleId }: Props) {
       Placeholder.configure({ placeholder: "Yazmaya başlayın..." }),
       Link.configure({ openOnClick: false }),
       ResizableImage,
+      Youtube,
+      Video,
+      Audio,
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Typography,
@@ -160,6 +169,43 @@ export default function ArticleEditor({ articleId }: Props) {
 
   const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); }, []);
 
+  // ── Media upload handlers ───────────────────────────────────────────────
+  const handleMediaUpload = useCallback(async (file: File, type: "video" | "audio") => {
+    if (!editor) return;
+
+    const label = type === "video" ? "Video" : "Ses";
+    const toastId = toast.loading(`${label} yükleniyor... (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", type === "video" ? "videos" : "audio");
+
+    try {
+      const res = await fetch("/api/v1/admin/upload", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("[MediaUpload] API error:", data);
+        toast.error(`${label} yüklenemedi: ${data.error || "Bilinmeyen hata"}`, { id: toastId });
+        return;
+      }
+
+      if (data.url) {
+        if (type === "video") {
+          editor.commands.setVideo({ src: data.url });
+        } else {
+          editor.commands.setAudio({ src: data.url });
+        }
+        toast.success(`${label} başarıyla eklendi`, { id: toastId });
+      } else {
+        toast.error(`${label} URL alınamadı`, { id: toastId });
+      }
+    } catch (err) {
+      console.error("[MediaUpload] Network error:", err);
+      toast.error(`${label} yüklenirken bir hata oluştu`, { id: toastId });
+    }
+  }, [editor]);
+
   // ── Character / word count ──────────────────────────────────────────────
   const characters = editor?.storage.characterCount.characters() ?? 0;
   const words = editor?.storage.characterCount.words() ?? 0;
@@ -199,6 +245,10 @@ export default function ArticleEditor({ articleId }: Props) {
         <input ref={images.thumbnailRef} type="file" accept="image/*" className="hidden"
           onChange={(e) => images.handleThumbnailUpload(e, form.language)} />
         <input ref={images.imageRef} type="file" accept="image/*" className="hidden" onChange={images.handleContentImage} />
+        <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaUpload(f, "video"); e.target.value = ""; }} />
+        <input ref={audioInputRef} type="file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/aac" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaUpload(f, "audio"); e.target.value = ""; }} />
 
         {/* Page Header — hidden in focus mode */}
         {!focusMode && (
@@ -399,6 +449,8 @@ export default function ArticleEditor({ articleId }: Props) {
                 <EditorToolbar
                   editor={editor}
                   imageRef={images.imageRef}
+                  videoRef={videoInputRef}
+                  audioRef={audioInputRef}
                   aiImageLoading={ai.aiImageLoading}
                   onAIImageClick={() => {
                     ai.setImagePromptText(form.title || "");

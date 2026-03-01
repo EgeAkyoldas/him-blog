@@ -22,17 +22,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
+    const allowedTypes = [
+      // Images
+      "image/jpeg", "image/png", "image/webp", "image/avif", "image/gif",
+      // Video
+      "video/mp4", "video/webm", "video/quicktime",
+      // Audio
+      "audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4", "audio/aac", "audio/x-m4a",
+    ];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: "Invalid file type. Allowed: jpg, png, webp, avif, gif" },
+        { error: "Invalid file type. Allowed: jpg, png, webp, gif, mp4, webm, mov, mp3, wav, ogg, m4a" },
         { status: 400 }
       );
     }
 
-    // Max 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large. Max 5MB." }, { status: 400 });
+    // Max 50MB for video/audio, 5MB for images
+    const isMedia = file.type.startsWith("video/") || file.type.startsWith("audio/");
+    const maxSize = isMedia ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return NextResponse.json({ error: `File too large. Max ${isMedia ? "50MB" : "5MB"}.` }, { status: 400 });
     }
 
     const supabase = createAdminClient();
@@ -42,15 +51,16 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    // All files go to "articles" bucket (images, video, audio all allowed)
     const { data, error } = await supabase.storage
-      .from("articles") // Storage bucket name — customize if needed
+      .from("articles")
       .upload(fileName, buffer, {
         contentType: file.type,
         upsert: false,
       });
 
     if (error) {
-      console.error("Storage upload error:", error);
+      console.error("[Upload] Storage error:", JSON.stringify(error));
       return NextResponse.json(
         { error: `Upload failed: ${error.message}` },
         { status: 500 }
@@ -60,6 +70,8 @@ export async function POST(request: NextRequest) {
     const { data: publicUrl } = supabase.storage
       .from("articles")
       .getPublicUrl(data.path);
+
+    console.log(`[Upload] Success: ${file.type} → ${publicUrl.publicUrl}`);
 
     return NextResponse.json({
       url: publicUrl.publicUrl,
