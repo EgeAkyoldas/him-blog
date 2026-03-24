@@ -36,11 +36,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
     }
 
-    // Map aspect ratio to dimension instruction
+    // Map aspect ratio to explicit dimension and composition instruction
     const dimensionMap: Record<string, string> = {
-      landscape: "wide landscape format (16:9 aspect ratio)",
-      portrait: "tall portrait format (9:16 aspect ratio)",
-      square: "square format (1:1 aspect ratio)",
+      "1:1": "SQUARE format (1:1 aspect ratio). Compose with perfectly centered balanced framing. Fill the entire canvas edge-to-edge with visual content, absolutely no padding or bars",
+      "4:3": "LANDSCAPE format (4:3 aspect ratio). Compose with wide horizontal framing. Fill the entire canvas edge-to-edge with visual content, absolutely no padding or bars",
+      "9:16": "TALL PORTRAIT format (9:16 aspect ratio). Compose with very tall vertical framing. Fill the entire canvas edge-to-edge with visual content, absolutely no padding or bars",
+      "16:9": "WIDE LANDSCAPE format (16:9 aspect ratio). Compose with cinematic wide horizontal framing. Fill the entire canvas edge-to-edge with visual content, absolutely no padding or bars",
+      landscape: "WIDE LANDSCAPE format (16:9 aspect ratio). Compose with cinematic wide horizontal framing. Fill the entire canvas edge-to-edge with visual content, absolutely no padding or bars",
+      portrait: "TALL PORTRAIT format (9:16 aspect ratio). Compose with very tall vertical framing. Fill the entire canvas edge-to-edge with visual content, absolutely no padding or bars",
+      square: "SQUARE format (1:1 aspect ratio). Compose with perfectly centered balanced framing. Fill the entire canvas edge-to-edge with visual content, absolutely no padding or bars",
     };
     const dimensionHint = dimensionMap[aspectRatio] || dimensionMap.landscape;
 
@@ -53,6 +57,28 @@ export async function POST(request: NextRequest) {
       article_context: articleContext || "Music education, practice, and learning",
     });
 
+    // Map named aspect ratios to API-compatible values (from Bananator working_ratios.ts)
+    const apiRatioMap: Record<string, string> = {
+      landscape: "16:9",
+      portrait: "9:16",
+      square: "1:1",
+    };
+    const apiAspectRatio = apiRatioMap[aspectRatio] || aspectRatio || "16:9";
+
+    // Build generationConfig with native imageConfig.aspectRatio
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const generationConfig: Record<string, any> = {
+      responseModalities: ["TEXT", "IMAGE"],
+    };
+
+    // Add imageConfig with native aspect ratio support (Gemini API parameter)
+    if (apiAspectRatio && apiAspectRatio !== "auto") {
+      generationConfig.imageConfig = {
+        aspectRatio: apiAspectRatio,
+      };
+      console.log(`[AI Image] Native imageConfig.aspectRatio = ${apiAspectRatio}`);
+    }
+
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
@@ -60,9 +86,7 @@ export async function POST(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: imagePrompt }] }],
-          generationConfig: {
-            responseModalities: ["TEXT", "IMAGE"],
-          },
+          generationConfig,
         }),
       }
     );

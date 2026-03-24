@@ -298,6 +298,8 @@ export function useAIAssistant(editor: Editor | null) {
       const xmlSlug = extractXMLTag(html, 'slug');
       const xmlMeta = extractXMLTag(html, 'meta_description');
       const xmlKeywords = extractXMLTag(html, 'keywords');
+      // ★ Extract ref_links BEFORE stripping XML wrappers (stripXMLWrappers removes them)
+      const xmlRefLinks = extractXMLTag(html, 'ref_links');
 
       // Category: XML first, then old [CATEGORY:] regex, then keyword detection
       const catMatch = html.match(/\[CATEGORY:\s*([^\]]+)\]/i);
@@ -345,12 +347,13 @@ export function useAIAssistant(editor: Editor | null) {
         }
       }
 
-      // 4. Parse [SOURCES]...[/SOURCES] block + merge with grounding chunks
+      // 4. Parse sources from pre-extracted XML <ref_links> or old [SOURCES] block + merge with grounding chunks
       const sourcesMatch = html.match(/\[SOURCES\]([\s\S]*?)\[\/SOURCES\]/i);
+      const sourceText = xmlRefLinks || (sourcesMatch ? sourcesMatch[1] : "");
       const parsedSources: { title: string; url: string }[] = [];
 
-      if (sourcesMatch) {
-        const sourceLines = sourcesMatch[1].trim().split("\n").filter(l => l.trim());
+      if (sourceText) {
+        const sourceLines = sourceText.trim().split("\n").filter(l => l.trim());
         for (const line of sourceLines) {
           const clean = line.replace(/^\d+\.\s*/, "").trim();
           // Try "Title | URL" format first
@@ -611,6 +614,8 @@ export function useAIAssistant(editor: Editor | null) {
       const xmlSlug = extractXMLTag(html, 'slug');
       const xmlMeta = extractXMLTag(html, 'meta_description');
       const xmlKeywords = extractXMLTag(html, 'keywords');
+      // ★ Extract ref_links BEFORE stripping XML wrappers (stripXMLWrappers removes them)
+      const xmlRefLinks = extractXMLTag(html, 'ref_links');
 
       const catMatch = html.match(/\[CATEGORY:\s*([^\]]+)\]/i);
       const aiCategory = xmlCategory
@@ -647,8 +652,7 @@ export function useAIAssistant(editor: Editor | null) {
         }
       }
 
-      // 4. Parse sources from XML <ref_links> or old [SOURCES] block
-      const xmlRefLinks = extractXMLTag(html, 'ref_links');
+      // 4. Parse sources from pre-extracted XML <ref_links> or old [SOURCES] block
       const sourcesMatch = html.match(/\[SOURCES\]([\s\S]*?)\[\/SOURCES\]/i);
       const sourceText = xmlRefLinks || (sourcesMatch ? sourcesMatch[1] : "");
       const parsedSources: { title: string; url: string }[] = [];

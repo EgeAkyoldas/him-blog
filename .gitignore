@@ -40,4 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
+# AI agent / IDE
+.agent/
+.gemini/
+.cursor/
+
+# OS files
+Thumbs.db

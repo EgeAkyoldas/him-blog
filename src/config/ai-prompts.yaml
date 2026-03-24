@@ -314,30 +314,53 @@ actions:
 
     Language: {language}
 
-# ─── IMAGE GENERATION ENGINE (V3) ──────────────────────────
+# ─── IMAGE GENERATION ENGINE (V5 — Anti-Letterbox) ──────────────────────────
 image_prompt: |
-  PHOTOGRAPHIC SPECIFICATIONS:
-  - Subject: {prompt}
-  - Context: {article_title}
-  - Style: Professional Editorial Photography. Moody and artistic.
-  - Camera: Sony A1, 85mm f/1.4 GM lens. Natural textures, meaningful bokeh.
-  - Lighting: {lighting_style}
-  - Focus: Sharp subject, creamy bokeh backgrounds (f/2.8).
-  - Color: Warm tones — cream, amber, deep brown, muted gold.
-  - Mood: Educational, inviting, professional but approachable.
+  Create a single photorealistic photograph with these specifications:
 
-  ARTICLE CONTEXT:
+  SUBJECT & SCENE:
+  - Subject: {prompt}
+  - Article Context: {article_title}
   - Theme: {article_context}
 
-  NEGATIVE PROMPT (STRICT):
-  No text, no logos, no watermarks, no distorted anatomy, no messy backgrounds,
-  no cartoons, no illustration style, no low resolution, no multiple versions in one frame,
-  no stock photo watermarks, no cheap-looking instruments, no distorted fingers,
-  no fake stock-photo smiles. Photorealistic only.
+  PHOTOGRAPHIC STYLE:
+  - Style: Professional Editorial Photography. Moody, artistic, cinematic.
+  - Camera: Sony A1, 85mm f/1.4 GM lens. Natural textures, meaningful bokeh.
+  - Lighting: Warm studio lighting with natural window light accents. Golden hour tones. Soft directional light creating depth and dimension.
+  - Focus: Sharp subject with creamy bokeh backgrounds (f/2.8).
+  - Color Palette: Warm tones — cream, amber, deep brown, muted gold, rich mahogany.
+  - Mood: Educational, inviting, professional but approachable.
 
-  CONSISTENCY RULE:
+  COMPOSITION — FULL BLEED (CRITICAL, READ CAREFULLY):
+  - The photograph MUST bleed to ALL FOUR EDGES of the canvas. No exceptions.
+  - Visual content (subject, background, textures) must touch every single edge — top, bottom, left, right.
+  - The background must be a REAL photographed environment (a room, studio, nature, desk, etc.), never a solid color.
+  - Fill the entire canvas with a rich, continuous scene. Think of this as a full-frame sensor capture — the viewfinder shows edge-to-edge content.
+  - There must be ZERO padding, ZERO margins, ZERO letterboxing, ZERO pillarboxing.
+  - DO NOT add any kind of border, frame, vignette edge, or matte around the image.
+  - DO NOT leave any strip of solid color (black, white, gray, or any other color) on any edge.
+
+  ASPECT RATIO (MANDATORY):
+  - Generate this image in exactly {dimension}. This is non-negotiable.
+  - If landscape: compose with wide horizontal framing, content stretching fully left-to-right.
+  - If portrait: compose with tall vertical framing, content stretching fully top-to-bottom.
+  - If square: compose with centered balanced framing, content filling all four corners.
+  - IMPORTANT: Do NOT generate a differently-shaped image and then pad it. Generate the content natively in the requested ratio.
+
+  ABSOLUTE PROHIBITIONS:
+  - Absolutely NO text, NO letters, NO words, NO numbers, NO typography, NO captions, NO labels, NO titles, NO subtitles anywhere in the image.
+  - Absolutely NO solid color backgrounds — not white, not black, not gray, not any color. The background MUST be a real photographed scene/environment.
+  - NO borders, NO bars, NO padding, NO letterboxing, NO pillarboxing — in ANY color.
+  - NO logos, NO watermarks, NO stamps, NO signatures.
+  - NO cartoons, NO illustrations, NO clip art, NO vector art.
+  - NO distorted anatomy, NO distorted fingers, NO extra limbs.
+  - NO multiple versions in one frame, NO collages, NO split screens.
+  - NO low resolution, NO pixelation, NO artifacts.
+  - NO cheap-looking instruments, NO fake stock-photo smiles.
+  - Photorealistic ONLY.
+
+  CONSISTENCY:
   All images in this article share the same visual language —
   same color temperature, same lighting style, same photographic approach.
-  Think of them as a cohesive photo series for one article spread.
+  A cohesive photo series for one premium article spread.
 
-  FORMAT: Generate in {dimension}.
